@@ -20,7 +20,7 @@ env:
   LINUX_ARTIFACT_SUFFIX: Linux-x64
 
 permissions:
-  checks: write
+  contents: write
 
 jobs:
   lint:
