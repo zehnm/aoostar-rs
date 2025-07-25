@@ -6,7 +6,7 @@ This project should also support the GEM12+ PRO device.
 
 **Disclaimer: ‼️ EXPERIMENTAL — use at your own risk ‼️**
 
-> I take no responsibility for the use of this software.
+> I take no responsibility for the use of this software.  
 > There is no official documentation available;
 > all display control commands have been reverse engineered from the original AOOSTAR-X software.
 
@@ -73,7 +73,9 @@ The display remains on continuously (24×7) if the official software is not runn
   That would be an interesting task — potentially uncovering additional display commands — but is outside the project's current scope.
 - Reimplementing the full AOOSTAR-X display software, which is overly complex for most use cases.
 
-## Installation
+## Linux Shell Control Commands
+
+Turning the display on or off is possible directly in a Linux shell! 
 
 Add your user to the `dialout` group for access to `/dev/ttyACM0`:
 
@@ -81,16 +83,44 @@ Add your user to the `dialout` group for access to `/dev/ttyACM0`:
 sudo usermod -a -G dialout $USER
 ```
 
-> You may have to log out and back in for group changes to take effect.
+> You may have to log out and back in for group changes to take effect.  
+> If not using a Debian based Linux, the tty device might have a different name, or not using the `dialout` group.
+ 
 
-## Build
-
-A recent [Rust](https://rustup.rs/) toolchain is required.
-On Ubuntu 25.04, you can install build dependencies with:
+### Turn display on
 
 ```shell
-sudo apt install build-essential pkg-config libudev-dev
+stty -F /dev/ttyACM0 raw
+printf "\252U\252U\v\0\0\0" > /dev/ttyACM0
 ```
+
+### Turn display off
+
+```shell
+stty -F /dev/ttyACM0 raw
+printf "\252U\252U\12\0\0\0" > /dev/ttyACM0
+```
+
+## Setup
+
+### Requirements
+
+1. A recent [Rust](https://rustup.rs/) toolchain is required, using `rust-up` is the easiest way to get everything set up.
+
+2. Install required build dependencies (shown for Ubuntu 25.04):
+
+```shell
+sudo apt install build-essential git pkg-config libudev-dev
+```
+
+3. Checkout project:
+
+```shell
+git clone https://github.com/zehnm/aoostar-rs.git
+cd aoostar-rs
+```
+
+### Build
 
 A release build is highly recommended, as it significantly improves graphics performance:
 
@@ -125,7 +155,7 @@ first panel.
 Besides demo mode, the following control commands have been implemented.
 
 The `asterctl` binary is built in `./target/release`.  
-Alternatively, use `cargo run --release --` to build and run automatically.
+Alternatively, use `cargo run --release --` to build and run automatically, for example: `cargo run --release -- --off`.
 
 > Aster: Greek for star and similar to AOOSTAR.
 
@@ -148,7 +178,7 @@ asterctl --image img/aybabtu.png
 ```
 
 This expects a 960 × 376 image (other sizes are automatically scaled and the aspect ratio is ignored).
-See Rust image crate for [support image formats](https://github.com/image-rs/image?tab=readme-ov-file#supported-image-formats).
+See Rust image crate for [supported image formats](https://github.com/image-rs/image?tab=readme-ov-file#supported-image-formats).
 
 ## Development
 
