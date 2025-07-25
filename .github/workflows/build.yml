@@ -20,7 +20,7 @@ env:
   LINUX_ARTIFACT_SUFFIX: Linux-x64
 
 permissions:
-  checks: write
+  contents: write
 
 jobs:
   lint:
@@ -116,7 +116,7 @@ jobs:
 
   release:
     name: GitHub release
-#    if: github.ref == 'refs/heads/main' || contains(github.ref, 'tags/v')
+    if: github.ref == 'refs/heads/main' || contains(github.ref, 'tags/v')
     needs: [ build ]
     runs-on: ubuntu-24.04
 
