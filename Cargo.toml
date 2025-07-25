@@ -1,0 +1,29 @@
+[package]
+name = "aoostar-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+authors = ["Markus Zehnder"]
+license = "MIT or Apache-2.0"
+
+[profile.release]
+strip = true  # Automatically strip symbols from the binary.
+
+[[bin]]
+name = "asterctl"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.98"
+bytes = "1.10.1"
+clap = { version = "4.5.41", features = ["derive"] }
+serialport = "4.7.2"
+image = "0.25.6"
+imageproc = { version = "0.25.0", default-features = false }
+ab_glyph = { version = "0.2.23", default-features = false, features = ["std"] }
+log = "0.4.27"
+env_logger = "0.11.8"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.141"
+serde_repr = "0.1.20"
+once_cell = "1.21.3"
