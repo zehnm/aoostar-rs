@@ -1,0 +1,206 @@
+name: Rust
+
+on:
+  push:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'src/**'
+      - '.github/**/*.yml'
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+env:
+  CARGO_TERM_COLOR: always
+  DEBUG_OUTPUT: "true"
+  APP_NAME: asterctl
+  BIN_OUTPUT_PATH: binaries
+  HASH_FILENAME: asterctl.hash
+  LINUX_ARTIFACT_SUFFIX: Linux-x64
+
+permissions:
+  checks: write
+
+jobs:
+  lint:
+    name: Clippy & Rustfmt
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Cache dependencies
+        id: cache-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install build deps
+        run: sudo apt install pkg-config libudev-dev
+
+      - uses: auguwu/clippy-action@1.4.0
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+
+  build:
+    name: Linux-x64 build
+    needs: lint
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # History of 200 should be more than enough to calculate commit count since last release tag.
+          fetch-depth: 200
+      - name: Fetch all tags to determine version
+        run: |
+          git fetch origin +refs/tags/*:refs/tags/*
+          APP_VERSION=$(git describe --match "v[0-9]*" --tags HEAD --always)
+          echo "APP_VERSION=$APP_VERSION" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${{ env.APP_NAME }}-$APP_VERSION-${{ env.LINUX_ARTIFACT_SUFFIX }}" >> $GITHUB_ENV
+
+      - name: Install build deps
+        run: sudo apt install pkg-config libudev-dev
+
+      - name: Cache dependencies
+        id: cache-dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v4
+        with:
+          path: |
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ inputs.target }}-${{ inputs.build }}
+
+      - name: Release build
+        shell: bash
+        run: cargo build --release
+
+      # Archive is required to preserve file permissions and re-used for release uploads
+      - name: Create upload artifact
+        shell: bash
+        run: |
+          ls -la target/release
+          mkdir -p ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
+          cp target/release/${{ env.APP_NAME }} ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp Monitor3.json ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          echo "VERSION=${{ env.APP_VERSION }}" > ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
+          echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
+          tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }} .
+
+      - uses: actions/upload-artifact@v4
+        id: upload_artifact
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_NAME }}.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  release:
+    name: GitHub release
+    if: github.ref == 'refs/heads/main' || contains(github.ref, 'tags/v')
+    needs: [ build ]
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Log
+        if: env.DEBUG_OUTPUT == 'true'
+        shell: bash
+        run: |
+          echo "--- Structure of downloaded artifacts ---"
+          ls -R
+          echo "--- Environment ---"
+          printenv
+
+      # Use a common timestamp for all matrix build artifacts
+      - name: Set build timestamp
+        run: |
+          echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> $GITHUB_ENV
+
+      - name: Extract archives from downloaded artifacts
+        run: |
+          # Files are wrapped in tar from actions/upload-artifact, then extracted into a directory by actions/download-artifact
+          ls -lah
+          for D in * 
+            do if [ -d "${D}" ]; then
+              echo "Archive directory: $D"
+              ls -lah $D/*
+              mv $D/* ./
+            fi
+          done;
+          ls -lah
+
+      # Add timestamp to development builds
+      - name: Create GitHub development build archives
+        if: "!contains(github.ref, 'tags/v')"
+        run: |
+          echo "append timestamp for development builds"
+          for filename in *.tar.gz; do mv $filename "$(basename $filename .tar.gz)-${{ env.TIMESTAMP }}.tar.gz"; done;
+          echo "create hashes"
+          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          ls -lah
+
+      # Checkout is required for the next `gh release delete` step
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: main
+
+      # We have to delete the "latest" release, otherwise `softprops/action-gh-release` will only append the new artifact.
+      # This simulates the old marvinpinto/action-automatic-releases action.
+      - name: Remove previous pre-release
+        run: |
+          cd main
+          gh release delete latest --cleanup-tag -y || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create Pre-Release
+        uses: softprops/action-gh-release@v2
+        if: "!contains(github.ref, 'tags/v')"
+        with:
+          prerelease: true
+          tag_name: latest
+          generate_release_notes: true
+          name: "Development Build"
+          files: |
+            *.tar.gz
+            ${{ env.HASH_FILENAME }}
+
+      - name: Create GitHub release archives
+        if: "contains(github.ref, 'tags/v')"
+        run: |
+          echo "create hashes"
+          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          ls -lah
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: "contains(github.ref, 'tags/v')"
+        with:
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            *.tar.gz
+            ${{ env.HASH_FILENAME }}
