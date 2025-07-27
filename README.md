@@ -20,29 +20,11 @@ Note: Multiple attempts to contact the manufacturer for documentation have recei
 
 With that out of the way, on to the fun stuff!
 
-## Features
-
-- Control the AOOSTAR WTR MAX and GEM12+ PRO second screen from Linux.
-- Switch the display on or off.
-- Display images (with automatic scaling and partial update support).
-- Proof-of-concept demo for drawing shapes and text.
-- USB device/serial port selection.
-
-
-## Display
-
-Known information:
-
-- **Screen size:** 2.86" ≈ 68 × 27 mm
-- **Resolution:** 960 × 376
-- **Manufacturer:** Synwit
-- **Connected over USB UART** with a proprietary serial communication protocol:
-    - **USB device ID:** `416:90A1` (as shown by `lsusb`)
-    - **Linux device (example on Debian):** `/dev/ttyACM0`
-    - **1,500,000 baud**, 8N1 (likely ignored; actual USB transfer speed is much higher)
-
+**See [Linux shell commands](doc/shell_commands.md) on how to switch off the display with standard Linux commands!**
 
 ## Reverse Engineering
+
+Reverse engineered LCD commands: [doc/lcd_protocol.md](doc/lcd_protocol.md)
 
 ### Motivation
 
@@ -62,9 +44,9 @@ The display remains on continuously (24×7) if the official software is not runn
 
 ### Goals
 
-- [ ] Reverse engineer the LCD serial protocol to provide open screen software.
+- [x] Reverse engineer the LCD serial protocol to provide open screen software.
     - Utilize the official AOOSTAR-X display software by sniffing USB communication, using `strace`, and decompiling the Python app.
-- [ ] Document known commands so clients in other programming languages can be written.
+- [x] Document known commands so clients in other programming languages can be written.
 - [ ] Eventually, create a Rust crate for easy integration into other Rust applications.
 
 **Out of scope:**
@@ -73,33 +55,13 @@ The display remains on continuously (24×7) if the official software is not runn
   That would be an interesting task — potentially uncovering additional display commands — but is outside the project's current scope.
 - Reimplementing the full AOOSTAR-X display software, which is overly complex for most use cases.
 
-## Linux Shell Control Commands
+### Features
 
-Turning the display on or off is possible directly in a Linux shell! 
-
-Add your user to the `dialout` group for access to `/dev/ttyACM0`:
-
-```shell
-sudo usermod -a -G dialout $USER
-```
-
-> You may have to log out and back in for group changes to take effect.  
-> If not using a Debian based Linux, the tty device might have a different name, or not using the `dialout` group.
- 
-
-### Turn display on
-
-```shell
-stty -F /dev/ttyACM0 raw
-printf "\252U\252U\v\0\0\0" > /dev/ttyACM0
-```
-
-### Turn display off
-
-```shell
-stty -F /dev/ttyACM0 raw
-printf "\252U\252U\12\0\0\0" > /dev/ttyACM0
-```
+- Control the AOOSTAR WTR MAX and GEM12+ PRO second screen from Linux.
+- Switch the display on or off.
+- Display images (with automatic scaling and partial update support).
+- Proof-of-concept demo for drawing shapes and text.
+- USB device/serial port selection.
 
 ## Setup
 
@@ -179,27 +141,6 @@ asterctl --image img/aybabtu.png
 
 This expects a 960 × 376 image (other sizes are automatically scaled and the aspect ratio is ignored).
 See Rust image crate for [supported image formats](https://github.com/image-rs/image?tab=readme-ov-file#supported-image-formats).
-
-## Development
-
-- When sending an image to the screen, the image must be in **RGB565** format (16 bits per pixel).
-  - All graphic operations are performed on the loaded RGB888 image buffer. 
-  - The image is automatically converted to RGB565 when sending it to the display. 
-- The 1.5 Mbps baud rate set in the client is ignored, as actual USB bulk transfer achieves much higher throughput.
-For reference, at the nominal serial rate (~1,500,000 baud), it would take approximately 6 seconds to transfer a full image of 721,920 bytes (960 × 376 × 2):
-    - Display protocol: payload per chunk = 47 bytes; header per chunk = 12 bytes
-    - Number of chunks: 721,920 / 47 ≈ 15,360 chunks
-    - Total transmitted data: 15,360 chunks × 59 bytes/chunk = 906,240 bytes
-    - Serial frame format: 1 start bit + 8 data bits + 1 stop bit = 10 bits/byte
-    - Effective byte rate: 1,500,000 bits/sec / 10 bits/byte = 150,000 bytes/sec
-    - Transfer time: 906,240 bytes / 150,000 bytes/sec ≈ 6 seconds
-- **Performance:**
-  - Displaying the first fullscreen image takes around 1.3 seconds.
-  - When switching the display on, the old image is immediately shown.
-  - Once the new image is fully transferred and the end-header command is sent, the display firmware switches to the new image.
-- **Partial Updates:**
-  - A frame cache is used to send only changed chunks after the initial image is displayed, greatly speeding up partial screen updates.
-  - The chunk size is 47 bytes, determined from the original app. It is unknown if other chunk sizes are supported.
 
 ## Contributing
 
