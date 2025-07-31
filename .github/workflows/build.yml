@@ -102,6 +102,7 @@ jobs:
           ls -la target/release
           mkdir -p ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
           cp target/release/${{ env.APP_NAME }} ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp linux/*.service ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp Monitor3.json ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           echo "VERSION=${{ env.APP_VERSION }}" > ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
           echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
