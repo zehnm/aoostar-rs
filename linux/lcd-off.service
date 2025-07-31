@@ -1,0 +1,46 @@
+[Unit]
+Description=Switch off embedded LCD on boot
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+DynamicUser=true
+# tailored to Debian: adapt for other Linux flavours! RW access to /dev/ttyACM0 is required
+Group=dialout
+
+ExecStart=/usr/bin/asterctl --off
+
+# lock down service
+CapabilityBoundingSet=
+LockPersonality=true
+RestrictNamespaces=true
+ProtectHome=true
+ProtectSystem=strict
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+KeyringMode=private
+ProtectClock=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictRealtime=true
+PrivateNetwork=true
+PrivateTmp=true
+PrivateUsers=true
+ProtectHostname=true
+RestrictAddressFamilies=none
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+UMask=0177
+
+# that's all we need access to
+DeviceAllow=/dev/ttyACM0 rw
+
+[Install]
+WantedBy=multi-user.target
