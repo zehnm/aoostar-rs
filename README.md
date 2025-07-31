@@ -90,6 +90,9 @@ A release build is highly recommended, as it significantly improves graphics per
 cargo build --release
 ```
 
+### Install
+
+See [Linux systemd Service](linux/) on how to automatically switch off the LCD at boot up.
 
 ## Demo App Usage
 
