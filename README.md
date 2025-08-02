@@ -22,6 +22,9 @@ With that out of the way, on to the fun stuff!
 
 **See [Linux shell commands](doc/shell_commands.md) on how to switch off the display with standard Linux commands!**
 
+See [releases](https://github.com/zehnm/aoostar-rs/releases) for binary Linux x64 releases and [Linux systemd Service](linux/)
+on how to automatically switch off the LCD at boot up. A Debian package for easy installation is planned for the future!
+
 ## Reverse Engineering
 
 Reverse engineered LCD commands: [doc/lcd_protocol.md](doc/lcd_protocol.md)
