@@ -406,7 +406,10 @@ fn update_panel(
 
     for sensor in &panel.sensor {
         if sensor.mode != SensorMode::Text {
-            debug!("Skipping sensor {}: unsupported sensor mode {:?}", sensor.label, sensor.mode);
+            debug!(
+                "Skipping sensor {}: unsupported sensor mode {:?}",
+                sensor.label, sensor.mode
+            );
             continue;
         }
 
