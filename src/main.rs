@@ -5,19 +5,26 @@ mod cfg;
 mod display;
 mod font;
 mod img;
+mod sensors;
 
-use crate::cfg::Panel;
+use crate::cfg::{Panel, SensorMode, TextAlign};
 use crate::display::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 use crate::font::FontHandler;
+use crate::sensors::start_file_slurper;
 use ab_glyph::{Font, PxScale};
+use anyhow::anyhow;
 use clap::Parser;
 use env_logger::Env;
 use image::imageops::FilterType;
 use image::{ImageReader, Rgb, RgbImage};
-use imageproc::drawing::{draw_line_segment_mut, draw_text_mut};
+use imageproc::drawing::{draw_line_segment_mut, draw_text_mut, text_size};
 use log::{debug, info, warn};
+use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -45,13 +52,30 @@ struct Args {
     #[arg(short, long)]
     image: Option<String>,
 
+    /// AOOSTAR-X json configuration file to parse.
+    ///
+    /// The configuration file will be loaded from the `config_dir` directory if no full path is
+    /// specified.
+    #[arg(short, long)]
+    config: Option<PathBuf>,
+
+    /// Configuration directory containing monnfiguration files and background images
+    /// specified in the `config` file. Default: `./cfg`
+    #[arg(long)]
+    config_dir: Option<PathBuf>,
+
+    /// Font directory for fonts specified in the `config` file. Default: `./fonts`
+    #[arg(long)]
+    font_dir: Option<PathBuf>,
+
+    /// Single sensor value input file or directory for multiple sensor input files.
+    /// Default: `./cfg/sensors`
+    #[arg(long)]
+    sensor_path: Option<PathBuf>,
+
     /// Run a demo
     #[arg(long)]
     demo: bool,
-
-    /// Only for demo mode: AOOSTAR-X json configuration file to parse.
-    #[arg(short, long)]
-    config: Option<String>,
 
     /// Switch off display n seconds after loading image or running demo.
     #[arg(short, long)]
@@ -70,9 +94,6 @@ fn main() -> anyhow::Result<()> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let args = Args::parse();
-    if let Some(config) = args.config.as_ref() {
-        let _cfg = cfg::load_cfg(config)?;
-    }
 
     // initialize display with given UART port parameter
     let mut builder = AooScreenBuilder::new();
@@ -96,6 +117,20 @@ fn main() -> anyhow::Result<()> {
 
     // switch on screen for remaining commands
     screen.init()?;
+
+    if !args.demo
+        && let Some(config) = args.config.as_ref()
+    {
+        info!("Starting sensor panel mode");
+        run_sensor_panel(
+            &mut screen,
+            config,
+            args.config_dir.unwrap_or_else(|| "cfg".into()),
+            args.font_dir.unwrap_or_else(|| "fonts".into()),
+            args.sensor_path.unwrap_or_else(|| "cfg/sensors".into()),
+            args.save,
+        )?;
+    }
 
     if let Some(image) = args.image {
         info!("Loading and displaying background image {image}...");
@@ -121,7 +156,90 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn run_demo(screen: &mut AooScreen, config: Option<&str>, save_images: bool) -> anyhow::Result<()> {
+fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
+    screen: &mut AooScreen,
+    config: P,
+    config_dir: B,
+    font_dir: B,
+    sensor_path: B,
+    save_images: bool,
+) -> anyhow::Result<()> {
+    let config = config.as_ref();
+    let config_dir = config_dir.into();
+    let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
+    let mut fh = FontHandler::new(font_dir);
+
+    let mut rgb_img;
+    let mut cfg = if config.is_absolute() {
+        cfg::load_cfg(config)?
+    } else {
+        cfg::load_cfg(config_dir.join(config))?
+    };
+
+    start_file_slurper(sensor_path, sensor_values.clone())?;
+
+    let refresh = Duration::from_millis((cfg.setup.refresh * 1000f32) as u64);
+
+    let switch_time = cfg
+        .setup
+        .switch_time
+        .as_deref()
+        .and_then(|v| f32::from_str(v).ok())
+        .map(|v| Duration::from_millis((v * 1000.0) as u64))
+        .unwrap_or(Duration::from_secs(30));
+
+    // panel switching loop
+    loop {
+        let panel = cfg
+            .get_next_active_panel()
+            .ok_or(anyhow!("No active panel"))?;
+
+        if let Some(img_file) = &panel.img {
+            let img_file = PathBuf::from(img_file);
+            let file = if img_file.is_absolute() {
+                img_file
+            } else {
+                config_dir.join(img_file)
+            };
+            info!("Loading panel image {file:?}...");
+            rgb_img = img::load_image(&file, DISPLAY_SIZE)?;
+        } else {
+            rgb_img = RgbImage::new(DISPLAY_SIZE.0, DISPLAY_SIZE.1);
+        }
+
+        let panel_switch_time = Instant::now();
+
+        // active panel refresh loop
+        loop {
+            let upd_start_time = Instant::now();
+
+            update_panel(
+                screen,
+                &rgb_img,
+                &mut fh,
+                panel,
+                sensor_values.clone(),
+                save_images,
+            )?;
+
+            let elapsed = upd_start_time.elapsed();
+            if refresh > elapsed {
+                sleep(refresh - elapsed);
+            }
+
+            if panel_switch_time.elapsed() >= switch_time {
+                info!("Switching panels");
+                break;
+            }
+        }
+    }
+}
+
+fn run_demo(
+    screen: &mut AooScreen,
+    config: Option<&Path>,
+    save_images: bool,
+) -> anyhow::Result<()> {
     let rgb_img = demo_image()?;
 
     // fill left and right side of the loaded image with neighboring pixel color
@@ -266,6 +384,86 @@ fn demo_blinds(
     screen.send_image(&rgb_img)?;
 
     Ok(rgb_img)
+}
+
+fn update_panel(
+    screen: &mut AooScreen,
+    background: &RgbImage,
+    fh: &mut FontHandler,
+    panel: &Panel,
+    values: Arc<RwLock<HashMap<String, String>>>,
+    save_image: bool,
+) -> anyhow::Result<()> {
+    debug!(
+        "Displaying panel {}...",
+        panel
+            .name
+            .as_deref()
+            .unwrap_or_else(|| panel.id.as_deref().unwrap_or_default())
+    );
+
+    let mut rgb_img = background.clone();
+
+    for sensor in &panel.sensor {
+        if sensor.mode != SensorMode::Text {
+            debug!("Skipping sensor {}: unsupported sensor mode {:?}", sensor.label, sensor.mode);
+            continue;
+        }
+
+        let values = values.read().expect("RwLock is poisoned");
+        let value = values.get(&sensor.label).cloned();
+        let unit = values
+            .get(&format!("{}#unit", sensor.label))
+            .cloned()
+            .or_else(|| sensor.unit.clone())
+            .unwrap_or_default();
+        drop(values);
+
+        if let Some(value) = value {
+            let font = fh.get_ttf_font_or_default(&sensor.font_family);
+            // TODO verify pixel scaling! Is font_size point size or pixel size?
+            // This is still a bit off compared to the original AOOSTAR-X. Only tested with HarmonyOS_Sans_SC_Bold!
+            let adjustment_hack = 0.7;
+            let scale = font
+                .pt_to_px_scale(sensor.font_size as f32 * adjustment_hack)
+                .unwrap();
+
+            let text = format!("{value}{unit}");
+            let size = text_size(scale, &font, &text);
+            // TODO verify x & y-coordinate handling
+            let x = match sensor.text_align {
+                TextAlign::Left => sensor.x as i32,
+                TextAlign::Center => sensor.x as i32 - (size.0 / 2) as i32,
+                TextAlign::Right => sensor.x as i32 - size.0 as i32,
+            };
+            let y = (sensor.y - scale.y / 2f32) as i32;
+            // let y = sensor.y as i32 - (size.1 / 2) as i32;
+
+            debug!(
+                "Sensor({:03},{:03}), pixel({x:03},{y:03}), size{size:?}: {text}",
+                sensor.x, sensor.y
+            );
+
+            draw_text_mut(
+                &mut rgb_img,
+                sensor.font_color.into(),
+                x,
+                y,
+                scale,
+                &font,
+                &text,
+            );
+        }
+    }
+
+    screen.send_image(&rgb_img)?;
+
+    if save_image {
+        fs::create_dir_all("out")?;
+        rgb_img.save_with_format("out/panel.png", image::ImageFormat::Png)?;
+    }
+
+    Ok(())
 }
 
 fn demo_panel(

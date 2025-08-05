@@ -15,9 +15,10 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::io::BufReader;
 use std::num::ParseIntError;
 use std::ops::Deref;
+use std::path::Path;
 use std::{fmt, fs};
 
-pub fn load_cfg(path: &str) -> anyhow::Result<MonitorConfig> {
+pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
     let file = fs::File::open(path)?;
     let reader = BufReader::new(file);
     let config: MonitorConfig = serde_json::from_reader(reader)?;
@@ -64,6 +65,36 @@ pub struct MonitorConfig {
     /// Custom panels / DIY "Do It Yourself",
     #[serde(rename = "diy")]
     pub panels: Vec<Panel>,
+    /// Internal index of the currently active panel. 1-based!
+    #[serde(skip)]
+    active_panel_idx: Option<usize>,
+}
+
+impl MonitorConfig {
+    pub fn get_next_active_panel(&mut self) -> Option<&Panel> {
+        let mut active_panel_idx = self.active_panel_idx.unwrap_or(0) + 1;
+        if active_panel_idx > self.panels.len() {
+            active_panel_idx = 1;
+        }
+
+        for (index, active) in self
+            .active_panels
+            .iter()
+            .filter(|&active| *active > 0)
+            .enumerate()
+        {
+            if *active > self.panels.len() as u32 {
+                warn!("Ignoring invalid active panel {active}");
+                continue;
+            }
+            if index + 1 == active_panel_idx {
+                self.active_panel_idx = Some(active_panel_idx);
+                return Some(&self.panels[*active as usize - 1]);
+            }
+        }
+
+        None
+    }
 }
 
 /// Web-app user login

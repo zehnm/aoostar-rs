@@ -105,7 +105,7 @@ text over the image.
 By default, the original LCD USB UART device `416:90A1` is used. See optional parameters to specify a different device.
 
 ```shell
-cargo run --release -- --demo --config Monitor3.json
+cargo run --release -- --demo --config monitor.json
 ```
 
 The `--config` parameter is optional. It loads the official configuration file and displays the defined sensors in the
@@ -117,6 +117,14 @@ first panel.
 - `--usb 0403:6001` — Specify the USB UART device by USB **VID:PID** (hexadecimal, as shown by `lsusb`).
 - `--help` — Show all options.
 
+
+### Sensor Panel
+
+_TODO documentation_
+
+```shell
+asterctl -c monitor.json --sensor-path cfg/sensors
+```
 
 ### Control Commands
 
