@@ -3,6 +3,7 @@
 
 mod cfg;
 mod display;
+mod dummy_serialport;
 mod font;
 mod img;
 mod sensors;
@@ -88,6 +89,10 @@ struct Args {
     /// Test mode: save changed images in ./out folder.
     #[arg(short, long)]
     save: bool,
+
+    /// Simulate serial port for testing and development, `--device` and `--usb` options are ignored.
+    #[arg(long)]
+    simulate: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -98,7 +103,9 @@ fn main() -> anyhow::Result<()> {
     // initialize display with given UART port parameter
     let mut builder = AooScreenBuilder::new();
     builder.no_init_check(args.write_only);
-    let mut screen = if let Some(device) = args.device {
+    let mut screen = if args.simulate {
+        builder.simulate()?
+    } else if let Some(device) = args.device {
         builder.open_device(&device)?
     } else if let Some(usb) = args.usb {
         builder.open_usb_id(&usb)?

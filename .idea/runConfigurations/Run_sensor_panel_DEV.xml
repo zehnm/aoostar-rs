@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run sensor panel DEV" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
-    <option name="command" value="run --package aoostar-rs --bin asterctl -- -d /dev/cu.usbserial-AB0KOHLS -w -c monitor.json -s" />
+    <option name="command" value="run --package aoostar-rs --bin asterctl -- -c monitor.json --save --simulate" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />
