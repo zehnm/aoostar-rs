@@ -6,6 +6,7 @@
 //! Derived from the available Monitor3.json file in AOOSTAR-X v1.3.4.
 //! Likely not fully compatible with files created with the original editor.
 
+use anyhow::Context;
 use image::Rgb;
 use imageproc::definitions::HasWhite;
 use log::warn;
@@ -19,7 +20,8 @@ use std::path::Path;
 use std::{fmt, fs};
 
 pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
-    let file = fs::File::open(path)?;
+    let path = path.as_ref();
+    let file = fs::File::open(path).with_context(|| format!("Failed to load config {path:?}"))?;
     let reader = BufReader::new(file);
     let config: MonitorConfig = serde_json::from_reader(reader)?;
 
@@ -56,10 +58,11 @@ pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
 /// AOOSTAR-X monitor json configuration file
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MonitorConfig {
-    /// _Not used_
-    pub credentials: Option<Credentials>,
+    // _Not used_
+    // pub credentials: Option<Credentials>,
+    /// Configuration settings.
     pub setup: Setup,
-    /// Panels: 1-based index into diy[i]
+    /// Panels: 1-based index into `panels`
     #[serde(rename = "mianban")]
     pub active_panels: Vec<u32>,
     /// Custom panels / DIY "Do It Yourself",
@@ -98,16 +101,26 @@ impl MonitorConfig {
 }
 
 /// Web-app user login
+///
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Credentials {
     pub username: String,
     pub password: String,
 }
 
-/// Configuration Settings
+/// Configuration settings.
+///
+/// Note: Trimmed down object to include only required fields for `asterctl`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Setup {
+    /// Switch time between panels in seconds, interpreted as int. Default: 5
+    pub switch_time: Option<String>, // existed as "30" string
+    /// Panel refresh in seconds. Default: 1
+    pub refresh: f32,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     /// Default: true
     pub off_display: bool,
     /// Selection of default panels based on theme / control_params / control_disk_temp ?
@@ -120,8 +133,6 @@ pub struct Setup {
     pub custom_panel: bool,
     /// Language index. Default: 0
     pub language: Language,
-    /// Switch time between panels (?) in seconds, interpreted as int. Default: 5
-    pub switch_time: Option<String>, // existed as "30" string
     /// Operation mode: performance, power saving, etc.
     pub operation_mode: Option<OperationMode>,
     /// Operation type 1 or 2 (?). Default: 1
@@ -137,10 +148,12 @@ pub struct Setup {
     #[serde(deserialize_with = "empty_string_as_none")]
     #[serde(rename = "ha_token")]
     pub ha_token: Option<String>, // "" in JSON ⇒ Option<String>
-    /// Panel refresh in seconds. Default: 1
-    pub refresh: f32,
+    */
 }
 
+/// Language setting.
+///
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 pub enum Language {
@@ -149,6 +162,7 @@ pub enum Language {
     Japanese = 2,
 }
 
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(i16)]
 pub enum OperationMode {
@@ -200,38 +214,47 @@ pub struct Sensor {
     pub name: Option<String>,
     /// Label name for custom panels.
     pub item_name: Option<String>,
-    /// TODO Data source?
+    /// Label identifier, also used as data source identifier.
     pub label: String,
-
-    /// x-position. Custom panel coordinates are stored as float!
-    pub x: f32,
-    /// x-position. TODO unit
-    pub y: f32,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-
-    pub text_direction: i32, // layout direction
-    pub direction: i32,      // sensor orientation, 0/1
-
+    /// Sensor value. Ignored: value is used from a sensor source
     #[serde(deserialize_with = "empty_string_as_none")]
     pub value: Option<String>, // "" or numbers, so Option<String>
-
-    pub font_family: String,
-    pub font_size: i32,
-    /// Font color in `#RRGGBB` notation, or -1 if not set. #ffffff = white, #ff0000 = red
-    pub font_color: FontColor,
-    pub font_weight: FontWeight,
-    pub text_align: TextAlign,
-
-    #[serde(deserialize_with = "option_none_if_minus_one")]
-    pub integer_digits: Option<i32>, // -1 ≈ unset ⇒ Option<i32>
-    #[serde(deserialize_with = "option_none_if_minus_one")]
-    pub decimal_digits: Option<i32>, // -1 ≈ unset ⇒ Option<i32>
-
     /// Optional unit text to print after the value
     #[serde(deserialize_with = "empty_string_as_none")]
     pub unit: Option<String>,
+    /// x-position. Custom panel coordinates are stored as float!
+    pub x: f32,
+    /// y-position.
+    pub y: f32,
+    /// _Not (yet) used_
+    pub width: Option<i32>,
+    /// _Not (yet) used_
+    pub height: Option<i32>,
+    /// _Not (yet) used_
+    pub text_direction: i32, // layout direction
+    /// _Not (yet) used_
+    pub direction: i32, // sensor orientation, 0/1
 
+    /// Font name matching font filename without file extension.
+    pub font_family: String,
+    /// TODO font size unit: points or pixels?
+    pub font_size: i32,
+    /// Font color in `#RRGGBB` notation, or -1 if not set. #ffffff = white, #ff0000 = red
+    pub font_color: FontColor,
+    /// _Not (yet) used_
+    pub font_weight: FontWeight,
+    pub text_align: TextAlign,
+
+    /// _Not (yet) used_
+    // -1 ≈ unset ⇒ Option<i32>
+    #[serde(deserialize_with = "option_none_if_minus_one")]
+    pub integer_digits: Option<i32>,
+    /// _Not (yet) used_
+    // -1 ≈ unset ⇒ Option<i32>
+    #[serde(deserialize_with = "option_none_if_minus_one")]
+    pub decimal_digits: Option<i32>,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     pub min_angle: i32,
     pub max_angle: i32,
     pub min_value: i32,
@@ -253,6 +276,7 @@ pub struct Sensor {
     pub data: Option<String>,
     /// For type = 6
     pub interval: Option<u32>,
+     */
 }
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]

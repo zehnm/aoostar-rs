@@ -123,17 +123,21 @@ first panel.
 _TODO documentation_
 
 ```shell
-asterctl -c monitor.json --sensor-path cfg/sensors
+asterctl --config monitor.json
 ```
 
 ### Control Commands
 
+> Aster: Greek for star and similar to AOOSTAR.
+
 Besides demo mode, the following control commands have been implemented.
 
 The `asterctl` binary is built in `./target/release`.  
-Alternatively, use `cargo run --release --` to build and run automatically, for example: `cargo run --release -- --off`.
+Alternatively, use `cargo run --release --` to build and run automatically, for example: 
 
-> Aster: Greek for star and similar to AOOSTAR.
+```shell
+cargo run --release -- --off
+```
 
 **Switch display on:**
 

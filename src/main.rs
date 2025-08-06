@@ -7,7 +7,7 @@ mod font;
 mod img;
 mod sensors;
 
-use crate::cfg::{Panel, SensorMode, TextAlign};
+use crate::cfg::{MonitorConfig, Panel, SensorMode, TextAlign};
 use crate::display::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 use crate::font::FontHandler;
 use crate::sensors::start_file_slurper;
@@ -18,7 +18,7 @@ use env_logger::Env;
 use image::imageops::FilterType;
 use image::{ImageReader, Rgb, RgbImage};
 use imageproc::drawing::{draw_line_segment_mut, draw_text_mut, text_size};
-use log::{debug, info, warn};
+use log::{debug, error, info};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
@@ -119,17 +119,28 @@ fn main() -> anyhow::Result<()> {
     screen.init()?;
 
     if !args.demo
-        && let Some(config) = args.config.as_ref()
+        && let Some(config) = args.config
     {
         info!("Starting sensor panel mode");
+        let img_save_path = if args.save {
+            let img_save_path = PathBuf::from("out");
+            fs::create_dir_all(&img_save_path)?;
+            Some(img_save_path)
+        } else {
+            None
+        };
+
+        let cfg_dir = args.config_dir.unwrap_or_else(|| "cfg".into());
+        let cfg = load_configuration(&config, &cfg_dir)?;
         run_sensor_panel(
             &mut screen,
-            config,
-            args.config_dir.unwrap_or_else(|| "cfg".into()),
+            cfg,
+            cfg_dir,
             args.font_dir.unwrap_or_else(|| "fonts".into()),
             args.sensor_path.unwrap_or_else(|| "cfg/sensors".into()),
-            args.save,
+            img_save_path,
         )?;
+        return Ok(());
     }
 
     if let Some(image) = args.image {
@@ -142,7 +153,13 @@ fn main() -> anyhow::Result<()> {
 
     if args.demo {
         info!("Loading and displaying demo...");
-        run_demo(&mut screen, args.config.as_deref(), args.save)?;
+        run_demo(
+            &mut screen,
+            args.config.as_deref(),
+            args.config_dir.unwrap_or_else(|| "cfg".into()),
+            args.font_dir.unwrap_or_else(|| "fonts".into()),
+            args.save,
+        )?;
     }
 
     if let Some(off) = args.off_after {
@@ -156,25 +173,31 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn load_configuration<P: AsRef<Path>>(config: P, config_dir: P) -> anyhow::Result<MonitorConfig> {
+    let config = config.as_ref();
+    let config_dir = config_dir.as_ref();
+
+    if config.is_absolute() {
+        cfg::load_cfg(config)
+    } else {
+        cfg::load_cfg(config_dir.join(config))
+    }
+}
+
 fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
     screen: &mut AooScreen,
-    config: P,
+    mut cfg: MonitorConfig,
     config_dir: B,
     font_dir: B,
     sensor_path: B,
-    save_images: bool,
+    img_save_path: Option<P>,
 ) -> anyhow::Result<()> {
-    let config = config.as_ref();
     let config_dir = config_dir.into();
     let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
     let mut fh = FontHandler::new(font_dir);
 
     let mut rgb_img;
-    let mut cfg = if config.is_absolute() {
-        cfg::load_cfg(config)?
-    } else {
-        cfg::load_cfg(config_dir.join(config))?
-    };
+    let mut save_img_name;
 
     start_file_slurper(sensor_path, sensor_values.clone())?;
 
@@ -196,6 +219,9 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
 
         if let Some(img_file) = &panel.img {
             let img_file = PathBuf::from(img_file);
+            save_img_name = img_file
+                .file_stem()
+                .map(|s| s.to_string_lossy().to_string());
             let file = if img_file.is_absolute() {
                 img_file
             } else {
@@ -204,14 +230,26 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
             info!("Loading panel image {file:?}...");
             rgb_img = img::load_image(&file, DISPLAY_SIZE)?;
         } else {
+            save_img_name = None;
             rgb_img = RgbImage::new(DISPLAY_SIZE.0, DISPLAY_SIZE.1);
         }
 
         let panel_switch_time = Instant::now();
 
         // active panel refresh loop
+        let mut refresh_count = 1;
         loop {
             let upd_start_time = Instant::now();
+
+            let out_filename = if let Some(save_path) = &img_save_path {
+                let save_path = save_path.as_ref();
+                Some(save_path.join(format!(
+                    "{}-{refresh_count:02}.png",
+                    save_img_name.as_deref().unwrap_or("panel")
+                )))
+            } else {
+                None
+            };
 
             update_panel(
                 screen,
@@ -219,7 +257,7 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
                 &mut fh,
                 panel,
                 sensor_values.clone(),
-                save_images,
+                out_filename,
             )?;
 
             let elapsed = upd_start_time.elapsed();
@@ -231,6 +269,8 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
                 info!("Switching panels");
                 break;
             }
+
+            refresh_count += 1;
         }
     }
 }
@@ -238,6 +278,8 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
 fn run_demo(
     screen: &mut AooScreen,
     config: Option<&Path>,
+    config_dir: PathBuf,
+    font_dir: PathBuf,
     save_images: bool,
 ) -> anyhow::Result<()> {
     let rgb_img = demo_image()?;
@@ -250,15 +292,38 @@ fn run_demo(
     demo_text(screen, &rgb_img, save_images)?;
 
     if let Some(config) = config {
-        let cfg = cfg::load_cfg(config)?;
-        for active in cfg.active_panels.clone() {
-            if active == 0 || active > cfg.panels.len() as u32 {
-                warn!("Ignoring invalid active panel {active}");
-                continue;
+        let mut cfg = load_configuration(config, &config_dir)?;
+
+        if let Some(panel) = cfg.get_next_active_panel() {
+            info!("Displaying demo panel...");
+
+            // get sensor values from panel configuration
+            let mut demo_values = HashMap::new();
+            for sensor in &panel.sensor {
+                demo_values.insert(
+                    sensor.label.clone(),
+                    sensor.value.clone().unwrap_or_default(),
+                );
             }
-            let panel = &cfg.panels[active as usize - 1];
-            demo_panel(screen, &rgb_img, panel, save_images)?;
-            break;
+
+            let mut fh = FontHandler::new(font_dir);
+            let out_filename = if save_images {
+                fs::create_dir_all("out")?;
+                Some("out/demo_panel.png")
+            } else {
+                None
+            };
+
+            update_panel(
+                screen,
+                &rgb_img,
+                &mut fh,
+                panel,
+                Arc::new(RwLock::new(demo_values)),
+                out_filename,
+            )?;
+        } else {
+            error!("No active panel found");
         }
     }
 
@@ -386,13 +451,13 @@ fn demo_blinds(
     Ok(rgb_img)
 }
 
-fn update_panel(
+fn update_panel<P: AsRef<Path>>(
     screen: &mut AooScreen,
     background: &RgbImage,
     fh: &mut FontHandler,
     panel: &Panel,
     values: Arc<RwLock<HashMap<String, String>>>,
-    save_image: bool,
+    img_save_path: Option<P>,
 ) -> anyhow::Result<()> {
     debug!(
         "Displaying panel {}...",
@@ -461,58 +526,8 @@ fn update_panel(
 
     screen.send_image(&rgb_img)?;
 
-    if save_image {
-        fs::create_dir_all("out")?;
-        rgb_img.save_with_format("out/panel.png", image::ImageFormat::Png)?;
-    }
-
-    Ok(())
-}
-
-fn demo_panel(
-    screen: &mut AooScreen,
-    background: &RgbImage,
-    panel: &Panel,
-    save_image: bool,
-) -> anyhow::Result<()> {
-    info!("Displaying panel information...");
-
-    let mut rgb_img = background.clone();
-
-    let mut fh = FontHandler::new("fonts");
-
-    for sensor in &panel.sensor {
-        println!(
-            "({:03},{:03}): {}{}",
-            sensor.x,
-            sensor.y,
-            sensor.value.as_deref().unwrap_or_default(),
-            sensor.unit.as_deref().unwrap_or_default()
-        );
-
-        if let Some(value) = &sensor.value {
-            let font = fh.get_ttf_font_or_default(&sensor.font_family);
-
-            let text = format!("{value}{}", sensor.unit.as_deref().unwrap_or_default());
-            let scale = font.pt_to_px_scale(sensor.font_size as f32).unwrap();
-            draw_text_mut(
-                &mut rgb_img,
-                sensor.font_color.into(),
-                // TODO figure out x,y unit conversion, something is off, probably in font scaling
-                sensor.x as i32,
-                sensor.y as i32,
-                scale,
-                &font,
-                &text,
-            );
-
-            screen.send_image(&rgb_img)?;
-        }
-    }
-
-    if save_image {
-        fs::create_dir_all("out")?;
-        rgb_img.save_with_format("out/panel.png", image::ImageFormat::Png)?;
+    if let Some(path) = img_save_path {
+        rgb_img.save_with_format(path, image::ImageFormat::Png)?;
     }
 
     Ok(())
