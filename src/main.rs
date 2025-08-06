@@ -60,7 +60,7 @@ struct Args {
     #[arg(short, long)]
     config: Option<PathBuf>,
 
-    /// Configuration directory containing monnfiguration files and background images
+    /// Configuration directory containing configuration files and background images
     /// specified in the `config` file. Default: `./cfg`
     #[arg(long)]
     config_dir: Option<PathBuf>,
@@ -216,7 +216,7 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
         .as_deref()
         .and_then(|v| f32::from_str(v).ok())
         .map(|v| Duration::from_millis((v * 1000.0) as u64))
-        .unwrap_or(Duration::from_secs(30));
+        .unwrap_or(Duration::from_secs(5));
 
     // panel switching loop
     loop {

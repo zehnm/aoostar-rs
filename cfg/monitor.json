@@ -1,17 +1,6 @@
 {
   "setup": {
-    "type": 1,
-    "offDisplay": true,
-    "controlParams": true,
-    "controlDiskTemp": true,
-    "customPanel": false,
-    "language": 1,
     "switchTime": "30",
-    "operationMode": 0,
-    "theme": 0,
-    "diskUpdate": 300,
-    "ha_url": "",
-    "ha_token": "",
     "refresh": 1
   },
   "mianban": [

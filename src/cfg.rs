@@ -33,8 +33,7 @@ pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
         let panel = &config.panels[active as usize - 1];
 
         println!(
-            "Panel {active}: type={}, {}",
-            panel.panel_type,
+            "Panel {active}: {}",
             panel.img.as_deref().unwrap_or_default()
         );
         for sensor in &panel.sensor {
@@ -115,9 +114,9 @@ pub struct Credentials {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Setup {
-    /// Switch time between panels in seconds, interpreted as int. Default: 5
+    /// Switch time between panels in seconds, interpreted as float and converted to milliseconds. Default: 5
     pub switch_time: Option<String>, // existed as "30" string
-    /// Panel refresh in seconds. Default: 1
+    /// Panel redraw interval in seconds. Default: 1
     pub refresh: f32,
     /*
     // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
@@ -182,11 +181,14 @@ pub struct Panel {
     pub id: Option<String>,
     /// Custom panel name
     pub name: Option<String>,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     /// TODO
     pub checked: Option<bool>,
     /// TODO panel type: 5 = built-in? 6 = custom ?
     #[serde(rename = "type")]
     pub panel_type: i32,
+     */
     /// Background image filename
     pub img: Option<String>,
     /// Sensors

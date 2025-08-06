@@ -120,11 +120,11 @@ first panel.
 
 ### Sensor Panel
 
-_TODO documentation_
-
 ```shell
 asterctl --config monitor.json
 ```
+
+See [sensor panels](doc/sensor_panels.md) for more information.
 
 ### Control Commands
 
