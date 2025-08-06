@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run demo" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
-    <option name="command" value="run --package AOOstar-rs --bin AOOstar-rs -- --demo -d /dev/cu.usbserial-AB0KOHLS -w -c Monitor3.json" />
+    <option name="command" value="run --package aoostar-rs --bin asterctl -- --demo -c monitor.json" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />

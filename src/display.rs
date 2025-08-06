@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: Copyright (c) 2025 Markus Zehnder
 
+use crate::dummy_serialport::DummySerialPort;
 use crate::img::rgb888_to_565;
 use anyhow::{Context, anyhow};
 use bytes::{BufMut, BytesMut};
@@ -63,6 +64,16 @@ impl AooScreenBuilder {
     /// Open the default AOOSTAR LCD USB UART device 416:90A1.
     pub fn open_default(self) -> anyhow::Result<AooScreen> {
         self.open_usb(USB_UART_VID, USB_UART_PID)
+    }
+
+    /// Simulate the LCD device. No real device or serial port is required.
+    pub fn simulate(self) -> anyhow::Result<AooScreen> {
+        Ok(AooScreen {
+            port: Some(Box::new(DummySerialPort::new())),
+            enable_cache: self.enable_cache.unwrap_or(true),
+            prev_frame: None,
+            no_init_check: self.no_init_check.unwrap_or(false),
+        })
     }
 
     /// Open the specified USB UART device id. Format: vid:pid
