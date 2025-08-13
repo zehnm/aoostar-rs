@@ -155,6 +155,7 @@ pub struct Setup {
 /// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
+#[allow(dead_code)]
 pub enum Language {
     Chinese = 0,
     English = 1,
@@ -164,6 +165,7 @@ pub enum Language {
 /// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(i16)]
+#[allow(dead_code)]
 pub enum OperationMode {
     None = -1,
     HighPerformance = 0,

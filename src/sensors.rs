@@ -6,7 +6,7 @@
 //! Only implementation is a file-based value provider with simple key-value pairs.
 
 use log::{debug, error, info, warn};
-use notify::event::{CreateKind, ModifyKind, RemoveKind};
+use notify::event::{ModifyKind, RenameMode};
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::collections::HashMap;
 use std::fs;
@@ -70,15 +70,14 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
                 }
             };
             match event.kind {
-                EventKind::Create(CreateKind::File) => {
-                    debug!("New sensor file: {:?}", event.paths);
-                }
-                EventKind::Modify(ModifyKind::Data(_)) => {
+                EventKind::Modify(kind)
+                    if matches!(kind, ModifyKind::Data(_) | ModifyKind::Name(RenameMode::To)) =>
+                {
                     for path in event.paths.iter() {
                         if path.extension().unwrap_or_default() != "txt" {
                             continue;
                         }
-                        debug!("Modified sensor file: {path:?}");
+                        debug!("Modified sensor file ({kind:?}): {path:?}");
                         let mut val = file_values.write().expect("Poisoned sensor RwLock");
 
                         if let Err(e) = read_from_file(path, val.deref_mut()) {
@@ -87,10 +86,10 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
                         }
                     }
                 }
-                EventKind::Remove(RemoveKind::File) => {
-                    debug!("Removed sensor file: {:?}", event.paths);
+                _ => {
+                    // just for debugging
+                    debug!("Watch event {:?}: {:?}", event.kind, event.paths);
                 }
-                _ => {}
             }
         }
     });
@@ -120,10 +119,11 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
     for entry in fs::read_dir(path)? {
         let path = entry?.path();
 
-        if path.is_file() && path.extension().unwrap_or_default() == "txt" {
-            if let Err(e) = read_from_file(&path, values) {
-                warn!("Failed to read sensor file {path:?}: {e}");
-            }
+        if path.is_file()
+            && path.extension().unwrap_or_default() == "txt"
+            && let Err(e) = read_from_file(&path, values)
+        {
+            warn!("Failed to read sensor file {path:?}: {e}");
         }
     }
 
@@ -147,7 +147,7 @@ fn read_from_file<P: AsRef<Path>>(
     path: P,
     values: &mut HashMap<String, String>,
 ) -> anyhow::Result<()> {
-    info!("Reading sensor file {:?}", path.as_ref());
+    debug!("Reading sensor file {:?}", path.as_ref());
 
     let file = fs::File::open(path)?;
     let reader = BufReader::new(file);

@@ -287,10 +287,11 @@ pub fn find_usb_serial_port(vid: u16, pid: u16) -> serialport::Result<String> {
     let ports = serialport::available_ports()?;
     for p in ports {
         debug!("Found serial port: {}", p.port_name);
-        if let SerialPortType::UsbPort(info) = p.port_type {
-            if info.pid == pid && info.vid == vid {
-                return Ok(p.port_name);
-            }
+        if let SerialPortType::UsbPort(info) = p.port_type
+            && info.pid == pid
+            && info.vid == vid
+        {
+            return Ok(p.port_name);
         }
     }
 
