@@ -5,12 +5,14 @@ mod cfg;
 mod display;
 mod dummy_serialport;
 mod font;
+mod format_value;
 mod img;
 mod sensors;
 
 use crate::cfg::{MonitorConfig, Panel, SensorMode, TextAlign};
 use crate::display::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 use crate::font::FontHandler;
+use crate::format_value::format_value;
 use crate::sensors::start_file_slurper;
 use ab_glyph::{Font, PxScale};
 use anyhow::anyhow;
@@ -503,7 +505,12 @@ fn update_panel<P: AsRef<Path>>(
                 .pt_to_px_scale(sensor.font_size as f32 * adjustment_hack)
                 .unwrap();
 
-            let text = format!("{value}{unit}");
+            let text = format_value(
+                &value,
+                sensor.integer_digits.into(),
+                sensor.decimal_digits.unwrap_or_default() as usize,
+                &unit,
+            );
             let size = text_size(scale, &font, &text);
             // TODO verify x & y-coordinate handling
             let x = match sensor.text_align {

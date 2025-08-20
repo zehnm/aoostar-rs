@@ -41,3 +41,5 @@ sysinfo = {  version = "0.37.0", optional = true }
 itertools = "0.14"
 tempfile = "3"
 
+[dev-dependencies]
+rstest = "0.26"

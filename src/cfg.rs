@@ -249,11 +249,11 @@ pub struct Sensor {
     pub font_weight: FontWeight,
     pub text_align: TextAlign,
 
-    /// _Not (yet) used_
+    /// Number of integer places for the sensor value.
     // -1 ≈ unset ⇒ Option<i32>
     #[serde(deserialize_with = "option_none_if_minus_one")]
     pub integer_digits: Option<i32>,
-    /// _Not (yet) used_
+    /// Number of decimal places for the sensor value.
     // -1 ≈ unset ⇒ Option<i32>
     #[serde(deserialize_with = "option_none_if_minus_one")]
     pub decimal_digits: Option<i32>,

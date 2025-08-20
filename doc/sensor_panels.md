@@ -42,6 +42,8 @@ The original AOOSTAR-X json configuration file format is used, but only use a su
   - `sensor`: Array of sensor objects.
 - Sensor object fields:
   - `label`: label identifier, also used as sensor value data source identifier
+  - `integerDigits`: sensor value format option: number of integer places. Value is 0-prefixed to number of places and set to `99` if overflown.
+  - `decimalDigits`: sensor value format option: number of decimal places.
   - `unit`: optional unit label, appended after the sensor value
   - `x`: x-position
   - `y`: y-position
