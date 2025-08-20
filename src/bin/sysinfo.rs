@@ -1,11 +1,22 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: Copyright (c) 2025 Markus Zehnder
 
+use clap::Parser;
+use env_logger::Env;
 use itertools::Itertools;
+use log::{debug, error, info};
+use regex::Regex;
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::fs;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, exit};
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use sysinfo::{Components, DiskKind, Disks, Networks, System};
+use tempfile::NamedTempFile;
 
 /// Proof of concept sensor value collection for the asterctl screen control tool.
 #[derive(Parser, Debug)]
@@ -492,20 +503,7 @@ fn update_linux_storage_sensors(
     Ok(())
 }
 
-use clap::Parser;
-use env_logger::Env;
-use log::{debug, error, info};
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
-use std::process::{Command, exit};
-use std::thread::sleep;
-use std::time::{Duration, Instant};
-use tempfile::NamedTempFile;
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct DiskInfo {
     pub device: String,
     pub temperature: i32,
@@ -521,7 +519,7 @@ pub struct DiskUsage {
     pub total_size: u64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum StorageDevice {
     All,
     Hdd,
