@@ -57,6 +57,7 @@ jobs:
   build:
     name: Linux-x64 build
     needs: lint
+    # using an older Ubuntu release on purpose to link against an older libc version for greater compatibility
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -95,6 +96,10 @@ jobs:
         shell: bash
         run: cargo build --release
 
+      - name: Build tools
+        shell: bash
+        run: cargo build --release --bin sysinfo --features=sysinfo
+
       # Archive is required to preserve file permissions and re-used for release uploads
       - name: Create upload artifact
         shell: bash
@@ -102,6 +107,7 @@ jobs:
           ls -la target/release
           mkdir -p ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
           cp target/release/${{ env.APP_NAME }} ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp target/release/sysinfo ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp linux/*.service ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp -r cfg ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           echo "VERSION=${{ env.APP_VERSION }}" > ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
