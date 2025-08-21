@@ -97,11 +97,7 @@ jobs:
 
       - name: Release build
         shell: bash
-        run: cargo build --release
-
-      - name: Build tools
-        shell: bash
-        run: cargo build --release --bin sysinfo --features=sysinfo
+        run: cargo build --release --bins --all-features
 
       # Archive is required to preserve file permissions and re-used for release uploads
       - name: Create upload artifact

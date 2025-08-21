@@ -90,8 +90,10 @@ cd aoostar-rs
 A release build is highly recommended, as it significantly improves graphics performance:
 
 ```shell
-cargo build --release
+cargo build --release --bins --all-features
 ```
+
+The `--bins` option builds the main `asterctl` app and all other tools.
 
 ### Install
 
