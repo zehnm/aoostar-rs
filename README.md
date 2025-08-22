@@ -90,8 +90,10 @@ cd aoostar-rs
 A release build is highly recommended, as it significantly improves graphics performance:
 
 ```shell
-cargo build --release
+cargo build --release --bins --all-features
 ```
+
+The `--bins` option builds the main `asterctl` app and all other tools.
 
 ### Install
 
@@ -105,7 +107,7 @@ text over the image.
 By default, the original LCD USB UART device `416:90A1` is used. See optional parameters to specify a different device.
 
 ```shell
-cargo run --release -- --demo --config Monitor3.json
+cargo run --release -- --demo --config monitor.json
 ```
 
 The `--config` parameter is optional. It loads the official configuration file and displays the defined sensors in the
@@ -118,14 +120,26 @@ first panel.
 - `--help` — Show all options.
 
 
+### Sensor Panel
+
+```shell
+asterctl --config monitor.json
+```
+
+See [sensor panels](doc/sensor_panels.md) for more information.
+
 ### Control Commands
+
+> Aster: Greek for star and similar to AOOSTAR.
 
 Besides demo mode, the following control commands have been implemented.
 
 The `asterctl` binary is built in `./target/release`.  
-Alternatively, use `cargo run --release --` to build and run automatically, for example: `cargo run --release -- --off`.
+Alternatively, use `cargo run --release --` to build and run automatically, for example: 
 
-> Aster: Greek for star and similar to AOOSTAR.
+```shell
+cargo run --release -- --off
+```
 
 **Switch display on:**
 

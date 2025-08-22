@@ -6,6 +6,7 @@
 //! Derived from the available Monitor3.json file in AOOSTAR-X v1.3.4.
 //! Likely not fully compatible with files created with the original editor.
 
+use anyhow::Context;
 use image::Rgb;
 use imageproc::definitions::HasWhite;
 use log::warn;
@@ -15,10 +16,12 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::io::BufReader;
 use std::num::ParseIntError;
 use std::ops::Deref;
+use std::path::Path;
 use std::{fmt, fs};
 
-pub fn load_cfg(path: &str) -> anyhow::Result<MonitorConfig> {
-    let file = fs::File::open(path)?;
+pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
+    let path = path.as_ref();
+    let file = fs::File::open(path).with_context(|| format!("Failed to load config {path:?}"))?;
     let reader = BufReader::new(file);
     let config: MonitorConfig = serde_json::from_reader(reader)?;
 
@@ -30,8 +33,7 @@ pub fn load_cfg(path: &str) -> anyhow::Result<MonitorConfig> {
         let panel = &config.panels[active as usize - 1];
 
         println!(
-            "Panel {active}: type={}, {}",
-            panel.panel_type,
+            "Panel {active}: {}",
             panel.img.as_deref().unwrap_or_default()
         );
         for sensor in &panel.sensor {
@@ -55,28 +57,69 @@ pub fn load_cfg(path: &str) -> anyhow::Result<MonitorConfig> {
 /// AOOSTAR-X monitor json configuration file
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MonitorConfig {
-    /// _Not used_
-    pub credentials: Option<Credentials>,
+    // _Not used_
+    // pub credentials: Option<Credentials>,
+    /// Configuration settings.
     pub setup: Setup,
-    /// Panels: 1-based index into diy[i]
+    /// Panels: 1-based index into `panels`
     #[serde(rename = "mianban")]
     pub active_panels: Vec<u32>,
     /// Custom panels / DIY "Do It Yourself",
     #[serde(rename = "diy")]
     pub panels: Vec<Panel>,
+    /// Internal index of the currently active panel. 1-based!
+    #[serde(skip)]
+    active_panel_idx: Option<usize>,
+}
+
+impl MonitorConfig {
+    pub fn get_next_active_panel(&mut self) -> Option<&Panel> {
+        let mut active_panel_idx = self.active_panel_idx.unwrap_or(0) + 1;
+        if active_panel_idx > self.panels.len() {
+            active_panel_idx = 1;
+        }
+
+        for (index, active) in self
+            .active_panels
+            .iter()
+            .filter(|&active| *active > 0)
+            .enumerate()
+        {
+            if *active > self.panels.len() as u32 {
+                warn!("Ignoring invalid active panel {active}");
+                continue;
+            }
+            if index + 1 == active_panel_idx {
+                self.active_panel_idx = Some(active_panel_idx);
+                return Some(&self.panels[*active as usize - 1]);
+            }
+        }
+
+        None
+    }
 }
 
 /// Web-app user login
+///
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Credentials {
     pub username: String,
     pub password: String,
 }
 
-/// Configuration Settings
+/// Configuration settings.
+///
+/// Note: Trimmed down object to include only required fields for `asterctl`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Setup {
+    /// Switch time between panels in seconds, interpreted as float and converted to milliseconds. Default: 5
+    pub switch_time: Option<String>, // existed as "30" string
+    /// Panel redraw interval in seconds. Default: 1
+    pub refresh: f32,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     /// Default: true
     pub off_display: bool,
     /// Selection of default panels based on theme / control_params / control_disk_temp ?
@@ -89,8 +132,6 @@ pub struct Setup {
     pub custom_panel: bool,
     /// Language index. Default: 0
     pub language: Language,
-    /// Switch time between panels (?) in seconds, interpreted as int. Default: 5
-    pub switch_time: Option<String>, // existed as "30" string
     /// Operation mode: performance, power saving, etc.
     pub operation_mode: Option<OperationMode>,
     /// Operation type 1 or 2 (?). Default: 1
@@ -106,20 +147,25 @@ pub struct Setup {
     #[serde(deserialize_with = "empty_string_as_none")]
     #[serde(rename = "ha_token")]
     pub ha_token: Option<String>, // "" in JSON ⇒ Option<String>
-    /// Panel refresh in seconds. Default: 1
-    pub refresh: f32,
+    */
 }
 
+/// Language setting.
+///
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
+#[allow(dead_code)]
 pub enum Language {
     Chinese = 0,
     English = 1,
     Japanese = 2,
 }
 
+/// Not used, part of AOOSTAR-X json configuration file.
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(i16)]
+#[allow(dead_code)]
 pub enum OperationMode {
     None = -1,
     HighPerformance = 0,
@@ -137,11 +183,14 @@ pub struct Panel {
     pub id: Option<String>,
     /// Custom panel name
     pub name: Option<String>,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     /// TODO
     pub checked: Option<bool>,
     /// TODO panel type: 5 = built-in? 6 = custom ?
     #[serde(rename = "type")]
     pub panel_type: i32,
+     */
     /// Background image filename
     pub img: Option<String>,
     /// Sensors
@@ -169,38 +218,47 @@ pub struct Sensor {
     pub name: Option<String>,
     /// Label name for custom panels.
     pub item_name: Option<String>,
-    /// TODO Data source?
+    /// Label identifier, also used as data source identifier.
     pub label: String,
-
-    /// x-position. Custom panel coordinates are stored as float!
-    pub x: f32,
-    /// x-position. TODO unit
-    pub y: f32,
-    pub width: Option<i32>,
-    pub height: Option<i32>,
-
-    pub text_direction: i32, // layout direction
-    pub direction: i32,      // sensor orientation, 0/1
-
+    /// Sensor value. Ignored: value is used from a sensor source
     #[serde(deserialize_with = "empty_string_as_none")]
     pub value: Option<String>, // "" or numbers, so Option<String>
-
-    pub font_family: String,
-    pub font_size: i32,
-    /// Font color in `#RRGGBB` notation, or -1 if not set. #ffffff = white, #ff0000 = red
-    pub font_color: FontColor,
-    pub font_weight: FontWeight,
-    pub text_align: TextAlign,
-
-    #[serde(deserialize_with = "option_none_if_minus_one")]
-    pub integer_digits: Option<i32>, // -1 ≈ unset ⇒ Option<i32>
-    #[serde(deserialize_with = "option_none_if_minus_one")]
-    pub decimal_digits: Option<i32>, // -1 ≈ unset ⇒ Option<i32>
-
     /// Optional unit text to print after the value
     #[serde(deserialize_with = "empty_string_as_none")]
     pub unit: Option<String>,
+    /// x-position. Custom panel coordinates are stored as float!
+    pub x: f32,
+    /// y-position.
+    pub y: f32,
+    /// _Not (yet) used_
+    pub width: Option<i32>,
+    /// _Not (yet) used_
+    pub height: Option<i32>,
+    /// _Not (yet) used_
+    pub text_direction: i32, // layout direction
+    /// _Not (yet) used_
+    pub direction: i32, // sensor orientation, 0/1
 
+    /// Font name matching font filename without file extension.
+    pub font_family: String,
+    /// TODO font size unit: points or pixels?
+    pub font_size: i32,
+    /// Font color in `#RRGGBB` notation, or -1 if not set. #ffffff = white, #ff0000 = red
+    pub font_color: FontColor,
+    /// _Not (yet) used_
+    pub font_weight: FontWeight,
+    pub text_align: TextAlign,
+
+    /// Number of integer places for the sensor value.
+    // -1 ≈ unset ⇒ Option<i32>
+    #[serde(deserialize_with = "option_none_if_minus_one")]
+    pub integer_digits: Option<i32>,
+    /// Number of decimal places for the sensor value.
+    // -1 ≈ unset ⇒ Option<i32>
+    #[serde(deserialize_with = "option_none_if_minus_one")]
+    pub decimal_digits: Option<i32>,
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
     pub min_angle: i32,
     pub max_angle: i32,
     pub min_value: i32,
@@ -222,6 +280,7 @@ pub struct Sensor {
     pub data: Option<String>,
     /// For type = 6
     pub interval: Option<u32>,
+     */
 }
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]

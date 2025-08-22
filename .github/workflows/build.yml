@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   lint:
-    name: Clippy & Rustfmt
+    name: Clippy, Rustfmt, Tests
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
@@ -54,9 +54,13 @@ jobs:
       - name: Run rustfmt
         run: cargo fmt --all -- --check
 
+      - name: Unit tests
+        run: cargo test
+
   build:
     name: Linux-x64 build
     needs: lint
+    # using an older Ubuntu release on purpose to link against an older libc version for greater compatibility
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
@@ -93,7 +97,7 @@ jobs:
 
       - name: Release build
         shell: bash
-        run: cargo build --release
+        run: cargo build --release --bins --all-features
 
       # Archive is required to preserve file permissions and re-used for release uploads
       - name: Create upload artifact
@@ -102,8 +106,9 @@ jobs:
           ls -la target/release
           mkdir -p ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
           cp target/release/${{ env.APP_NAME }} ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp target/release/sysinfo ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp linux/*.service ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
-          cp Monitor3.json ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp -r cfg ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           echo "VERSION=${{ env.APP_VERSION }}" > ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
           echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
           tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }} .

@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Changes in the next release_
 
+### Added
+- Simple sensor panel with a file-based data source (#6) 
+
 ---
 
 ## v0.1.0 - 2025-08-02
