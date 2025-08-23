@@ -127,7 +127,7 @@ impl PanelRenderer {
 
         let now = Instant::now();
         let background = if let Some(img) = &panel.img
-            && let Some(background) = self.image_cache.get_resized(img, self.size)
+            && let Some(background) = self.image_cache.get(img, Some(self.size))
         {
             background.clone()
         } else {
@@ -266,7 +266,7 @@ impl PanelRenderer {
 
         let target_image = self
             .image_cache
-            .get(pic_path)
+            .get(pic_path, None)
             .ok_or_else(|| {
                 ImageProcessingError::ImageLoadError(format!("Failed to load: {:?}", pic_path))
             })?
@@ -333,7 +333,7 @@ impl PanelRenderer {
 
         let mut processed_img = self
             .image_cache
-            .get(pic_path)
+            .get(pic_path, None)
             .ok_or_else(|| {
                 ImageProcessingError::ImageLoadError(format!("Failed to load: {:?}", pic_path))
             })?
@@ -431,7 +431,7 @@ impl PanelRenderer {
 
         let mut pic = self
             .image_cache
-            .get(pic_path)
+            .get(pic_path, None)
             .ok_or_else(|| {
                 ImageProcessingError::ImageLoadError(format!("Failed to load: {:?}", pic_path))
             })?

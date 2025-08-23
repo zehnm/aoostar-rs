@@ -10,7 +10,7 @@ mod img;
 mod render;
 mod sensors;
 
-use crate::cfg::{MonitorConfig, Panel};
+use crate::cfg::{MonitorConfig, Panel, load_custom_panel};
 use crate::display::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 use crate::font::FontHandler;
 use crate::render::PanelRenderer;
@@ -62,6 +62,12 @@ struct Args {
     /// specified.
     #[arg(short, long)]
     config: Option<PathBuf>,
+
+    /// Include one or more additional custom panels into the base configuration.
+    ///
+    /// Specify the path to the panel directory containing panel.json and fonts / img subdirectories.
+    #[arg(short, long)]
+    panels: Option<Vec<PathBuf>>,
 
     /// Configuration directory containing configuration files and background images
     /// specified in the `config` file. Default: `./cfg`
@@ -141,7 +147,7 @@ fn main() -> anyhow::Result<()> {
         };
 
         let cfg_dir = args.config_dir.unwrap_or_else(|| "cfg".into());
-        let cfg = load_configuration(&config, &cfg_dir)?;
+        let cfg = load_configuration(&config, &cfg_dir, args.panels)?;
         run_sensor_panel(
             &mut screen,
             cfg,
@@ -155,7 +161,7 @@ fn main() -> anyhow::Result<()> {
 
     if let Some(image) = args.image {
         info!("Loading and displaying background image {image}...");
-        let rgb_img = img::load_image(&image, DISPLAY_SIZE)?.to_rgb8();
+        let rgb_img = img::load_image(&image, Some(DISPLAY_SIZE))?.to_rgb8();
         let timestamp = Instant::now();
         screen.send_image(&rgb_img)?;
         debug!("Image sent in {}ms", timestamp.elapsed().as_millis());
@@ -183,15 +189,27 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn load_configuration<P: AsRef<Path>>(config: P, config_dir: P) -> anyhow::Result<MonitorConfig> {
+fn load_configuration<P: AsRef<Path>>(
+    config: P,
+    config_dir: P,
+    panels: Option<Vec<PathBuf>>,
+) -> anyhow::Result<MonitorConfig> {
     let config = config.as_ref();
     let config_dir = config_dir.as_ref();
 
-    if config.is_absolute() {
-        cfg::load_cfg(config)
+    let mut cfg = if config.is_absolute() {
+        cfg::load_cfg(config)?
     } else {
-        cfg::load_cfg(config_dir.join(config))
+        cfg::load_cfg(config_dir.join(config))?
+    };
+
+    if let Some(panels) = panels {
+        for panel in panels {
+            cfg.include_custom_panel(load_custom_panel(panel)?);
+        }
     }
+
+    Ok(cfg)
 }
 
 fn run_sensor_panel<B: Into<PathBuf>>(
@@ -210,8 +228,8 @@ fn run_sensor_panel<B: Into<PathBuf>>(
     if let Some(img_save_path) = &img_save_path {
         renderer.set_img_save_path(img_save_path);
         renderer.set_save_render_img(true);
-        renderer.set_save_processed_pic(true);
-        renderer.set_save_progress_layer(true);
+        // renderer.set_save_processed_pic(true);
+        // renderer.set_save_progress_layer(true);
     }
 
     let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
@@ -304,7 +322,7 @@ fn run_demo(
     demo_text(screen, &rgb_img, save_images)?;
 
     if let Some(config) = config {
-        let mut cfg = load_configuration(config, &config_dir)?;
+        let mut cfg = load_configuration(config, &config_dir, None)?;
 
         if let Some(panel) = cfg.get_next_active_panel() {
             info!("Displaying demo panel...");

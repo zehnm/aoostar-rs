@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 /// Width, height type
 pub type Size = (u32, u32);
 
-pub fn load_image<P>(path: P, size: Size) -> anyhow::Result<DynamicImage>
+pub fn load_image<P>(path: P, size: Option<Size>) -> anyhow::Result<DynamicImage>
 where
     P: AsRef<Path>,
 {
@@ -26,7 +26,9 @@ where
         img.color()
     );
 
-    if img.dimensions() != size {
+    if let Some(size) = size
+        && img.dimensions() != size
+    {
         warn!(
             "Resizing invalid image dimensions {:?} to expected size {:?}, ignoring aspect ratio",
             img.dimensions(),
@@ -92,7 +94,7 @@ impl ImageCache {
     }
 
     /// Load and cache an image, returns None if loading fails
-    pub fn get<P: AsRef<Path>>(&mut self, path: P) -> Option<&RgbaImage> {
+    pub fn get<P: AsRef<Path>>(&mut self, path: P, size: Option<Size>) -> Option<&RgbaImage> {
         let path = path.as_ref();
         let path = if path.is_absolute() {
             path.to_path_buf()
@@ -101,30 +103,15 @@ impl ImageCache {
         };
 
         if !self.cache.contains_key(&path) {
-            let image_result = match image::open(&path) {
+            let image_result = match load_image(&path, size) {
                 Ok(img) => Some(img.to_rgba8()),
                 Err(e) => {
                     warn!("Failed to load image {:?}: {:?}", path, e);
                     None
                 }
             };
+
             self.cache.insert(path.clone(), image_result);
-        }
-
-        self.cache.get(&path).and_then(|opt| opt.as_ref())
-    }
-
-    pub fn get_resized<P: AsRef<Path>>(&mut self, path: P, size: Size) -> Option<&RgbaImage> {
-        let path = path.as_ref();
-        let path = if path.is_absolute() {
-            path.to_path_buf()
-        } else {
-            self.img_path.join(path)
-        };
-
-        if !self.cache.contains_key(&path) {
-            let image = load_image(&path, size).ok()?.to_rgba8();
-            self.cache.insert(path.clone(), Some(image));
         }
 
         self.cache.get(&path).and_then(|opt| opt.as_ref())

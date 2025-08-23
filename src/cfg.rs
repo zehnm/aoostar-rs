@@ -9,7 +9,7 @@
 use anyhow::Context;
 use image::{Rgb, Rgba};
 use imageproc::definitions::HasWhite;
-use log::warn;
+use log::{info, warn};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -54,6 +54,51 @@ pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
     Ok(config)
 }
 
+/// Load a custom panel configuration.
+///
+/// The distributed panel ZIP file must be extracted and contain:
+/// - `panel.json` configuration file
+/// - `img` subdirectory containing the referenced images in panel.json
+/// - `fonts` subdirectory containing the referenced fonts in panel.json
+///
+/// # Arguments
+///
+/// * `path`: directory path of the extracted custom panel.
+///
+/// returns: Result<Panel, Error>
+pub fn load_custom_panel<P: AsRef<Path>>(path: P) -> anyhow::Result<Panel> {
+    let path = path.as_ref();
+    let panel_file = path.join("panel.json");
+
+    info!("Loading custom panel {panel_file:?}");
+
+    let file = fs::File::open(&panel_file)
+        .with_context(|| format!("Failed to load custom panel {panel_file:?}"))?;
+    let reader = BufReader::new(file);
+    let mut panel: Panel = serde_json::from_reader(reader)?;
+
+    // adjust font and image file paths
+    let img_path = fs::canonicalize(path.join("img"))?;
+    let font_path = fs::canonicalize(path.join("fonts"))?;
+    if let Some(img) = &panel.img
+        && !Path::new(img).is_absolute()
+    {
+        panel.img = Some(img_path.join(img).display().to_string());
+    }
+    for sensor in panel.sensor.iter_mut() {
+        if let Some(pic) = &sensor.pic
+            && !Path::new(pic).is_absolute()
+        {
+            sensor.pic = Some(img_path.join(pic).display().to_string());
+        }
+        if !sensor.font_family.is_empty() && !Path::new(&sensor.font_family).is_absolute() {
+            sensor.font_family = font_path.join(&sensor.font_family).display().to_string();
+        }
+    }
+
+    Ok(panel)
+}
+
 /// AOOSTAR-X monitor json configuration file
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MonitorConfig {
@@ -96,6 +141,11 @@ impl MonitorConfig {
         }
 
         None
+    }
+
+    pub fn include_custom_panel(&mut self, panel: Panel) {
+        self.panels.push(panel);
+        self.active_panels.push(self.panels.len() as u32);
     }
 }
 
@@ -428,7 +478,7 @@ impl TryFrom<&str> for FontColor {
     type Error = ParseIntError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value.len() != 7 || value.starts_with('#') {
+        if value.len() != 7 || !value.starts_with('#') {
             warn!("Invalid font color: {value}");
             Ok(FontColor::default())
         } else {

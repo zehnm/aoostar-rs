@@ -16,8 +16,8 @@ Example panels from the AOOSTAR-X software, rendered with `asterctl` using dummy
 
 - One or multiple panels rotating in configurable interval (configuration value `setup.switchTime`).
 - Each panel can be configured with multiple sensor fields.
-  - Only text sensor value fields are supported (`sensor.mode: 1`).
-  - Fan (2), progress (3) and pointer (4) sensors are not supported.
+  - Text sensor value fields are supported (`sensor.mode: 1`), but there are still some text size and positioning issues.
+  - Fan (2), progress (3) and pointer (4) sensor modes are being worked on and not all configuration options are working yet.
 - Each sensor field can be customized with an individual font, size, color and text alignment.
 - Panels are redrawn at a configurable interval (configuration value `setup.refresh`).
   - Only the updated areas of the image are sent to the display for faster updates.
@@ -32,7 +32,7 @@ asterctl --config monitor.json
 - The configuration file is loaded from the configuration directory if not an absolute path is specified.
 - The default configuration directory is `./cfg` and can be changed with the `--config-dir` command line option.
 
-The original AOOSTAR-X json configuration file format is used, but only use a subset of the configuration is supported:
+The original AOOSTAR-X json configuration file format is used, but only a subset of the configuration is supported:
 
 - Setup object fields:
   - `switchTime`: Optional switch time between panels in seconds, string value interpreted as float and converted to milliseconds. Default: 5
@@ -51,12 +51,38 @@ The original AOOSTAR-X json configuration file format is used, but only use a su
   - `fontSize`: Font size
   - `fontColor`: Font color in `#RRGGBB` notation, or `-1` if not set. Examples: `#ffffff` = white, `#ff0000` = red. Default: `#ffffff` 
   - `textAlign`: Text alignment: `left`, `right`, `center`
+  - Fields used for the fan (2), progress (3) and pointer (4) sensor modes:
+    - `min_value` and `max_value`
+    - `width` and `height`
+    - `direction`
+    - `pic`: progress image, loaded from the specified configuration directory if not an absolute path is specified.
+    - `min_angle` and `max_angle`
+    - `xz_x` and `xz_y`
 
 Example configuration file: [cfg/monitor.json](../cfg/monitor.json).
 
 Sensor values are not read from the configuration file (the `sensor.value` field is ignored). See data sources below.
 
 More options might be supported later.
+
+### Custom Panels
+
+By default, the defined panels in the main configuration file are loaded and rendered.
+
+Additional custom panels can be included with the `--panels` command line parameter.
+
+A custom panel consists of:
+- a `panel.json` file with just the json object of the `diy` array of the main configuration file.
+- `img` subdirectory containing the referenced images in `panel.json`
+- `fonts` subdirectory containing the referenced fonts in `panel.json`
+
+There are lots of custom panel configurations available online.
+AOOSTAR support sent the following link: <http://pan.sztbkj.com:5244/>
+
+Example:
+```shell
+asterctl --config monitor.json --panels cfg/01_custom --panels cfg/02_custom
+```
 
 ## Sensor Data Sources
 
