@@ -76,8 +76,67 @@ A custom panel consists of:
 - `img` subdirectory containing the referenced images in `panel.json`
 - `fonts` subdirectory containing the referenced fonts in `panel.json`
 
+Example:
+```
+.
+├── fonts
+│   ├── HarmonyOS_Sans_SC_Bold.ttf
+│   └── ROGFontsv.ttf
+├── img
+│   ├── 6ae90fde-d0a1-44ec-9e15-7b6af14e3b7b.jpg
+│   ├── 95f38f70-9e0c-4b54-80a9-6bd7b0b4475c_1744449208_1746941971.png
+│   ├── f1c3d74c-0157-4b77-82a6-f07e565fe439_1744447224_1746941971.png
+│   └── f5d534e5-4527-4ca0-a0e9-69e8eef86f62_1744447151_1746941971.png
+└── panel.json
+```
+
+Example `panel.json` (shortened to one sensor definition) with a "pointer" indicator sensor that renders the following
+graphic:
+
+<img src="img/sensor_mode4.png" alt="sensor mode 4 example">
+<details>
+
+```json
+{
+  "name": "Test panel",
+  "checked": true,
+  "type": 6,
+  "img": "6ae90fde-d0a1-44ec-9e15-7b6af14e3b7b.jpg",
+  "sensor": [
+    {
+      "id": "a9d4acac-2af9-4fe0-9f69-86cd09f25696",
+      "itemName": "CPU dial",
+      "mode": 4,
+      "type": 1,
+      "direction": 1,
+      "label": "cpu_percent",
+      "value": "47.7",
+      "x": 159.98,
+      "y": 207.97,
+      "width": 302,
+      "height": 302,
+      "fontColor": "#ffffff",
+      "fontSize": 14,
+      "fontFamily": "",
+      "fontWeight": "normal",
+      "textAlign": "left",
+      "minAngle": -110,
+      "maxAngle": 110,
+      "minValue": 0,
+      "maxValue": 90,
+      "xz_x": 0,
+      "xz_y": 0,
+      "pic": "f5d534e5-4527-4ca0-a0e9-69e8eef86f62_1744447151_1746941971.png"
+    }
+  ]
+}
+```
+
+</details>
+
 There are lots of custom panel configurations available online.
-AOOSTAR support sent the following link: <http://pan.sztbkj.com:5244/>
+AOOSTAR support sent the following link: <http://pan.sztbkj.com:5244/>, look for a file called [`有线网卡 windows驱动.rar`](http://pan.sztbkj.com:5244/WTR%20MAX%206+5%E7%9B%98%E4%BD%8D/%E9%A9%B1%E5%8A%A8/%E6%9C%89%E7%BA%BF%E7%BD%91%E5%8D%A1%20windows%E9%A9%B1%E5%8A%A8.rar)
+in the `WTR MAX 6+5盘位/驱动/` subfolder.
 
 Example:
 ```shell
