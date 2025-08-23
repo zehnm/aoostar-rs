@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: Copyright (c) 2025 Markus Zehnder
 
+//! Font handling and caching.
+
 use ab_glyph::{FontArc, FontRef, FontVec};
 use anyhow::{Context, anyhow};
 use log::warn;
@@ -60,5 +62,10 @@ impl FontHandler {
         self.ttf_cache.insert(name.to_string(), font.clone());
 
         Ok(font)
+    }
+
+    #[allow(dead_code)]
+    pub fn clear(&mut self) {
+        self.ttf_cache.clear();
     }
 }

@@ -7,20 +7,21 @@ mod dummy_serialport;
 mod font;
 mod format_value;
 mod img;
+mod render;
 mod sensors;
 
-use crate::cfg::{MonitorConfig, Panel, SensorMode, TextAlign};
+use crate::cfg::{MonitorConfig, Panel};
 use crate::display::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 use crate::font::FontHandler;
-use crate::format_value::format_value;
+use crate::render::PanelRenderer;
 use crate::sensors::start_file_slurper;
-use ab_glyph::{Font, PxScale};
+use ab_glyph::PxScale;
 use anyhow::anyhow;
 use clap::Parser;
 use env_logger::Env;
 use image::imageops::FilterType;
 use image::{ImageReader, Rgb, RgbImage};
-use imageproc::drawing::{draw_line_segment_mut, draw_text_mut, text_size};
+use imageproc::drawing::{draw_line_segment_mut, draw_text_mut};
 use log::{debug, error, info};
 use std::collections::HashMap;
 use std::fs;
@@ -154,7 +155,7 @@ fn main() -> anyhow::Result<()> {
 
     if let Some(image) = args.image {
         info!("Loading and displaying background image {image}...");
-        let rgb_img = img::load_image(&image, DISPLAY_SIZE)?;
+        let rgb_img = img::load_image(&image, DISPLAY_SIZE)?.to_rgb8();
         let timestamp = Instant::now();
         screen.send_image(&rgb_img)?;
         debug!("Image sent in {}ms", timestamp.elapsed().as_millis());
@@ -193,20 +194,27 @@ fn load_configuration<P: AsRef<Path>>(config: P, config_dir: P) -> anyhow::Resul
     }
 }
 
-fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
+fn run_sensor_panel<B: Into<PathBuf>>(
     screen: &mut AooScreen,
     mut cfg: MonitorConfig,
     config_dir: B,
     font_dir: B,
     sensor_path: B,
-    img_save_path: Option<P>,
+    img_save_path: Option<B>,
 ) -> anyhow::Result<()> {
+    let font_dir = font_dir.into();
     let config_dir = config_dir.into();
-    let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
-    let mut fh = FontHandler::new(font_dir);
+    let img_save_path = img_save_path.map(|p| p.into());
 
-    let mut rgb_img;
-    let mut save_img_name;
+    let mut renderer = PanelRenderer::new(DISPLAY_SIZE, &font_dir, &config_dir);
+    if let Some(img_save_path) = &img_save_path {
+        renderer.set_img_save_path(img_save_path);
+        renderer.set_save_render_img(true);
+        renderer.set_save_processed_pic(true);
+        renderer.set_save_progress_layer(true);
+    }
+
+    let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
     start_file_slurper(sensor_path, sensor_values.clone())?;
 
@@ -226,23 +234,6 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
             .get_next_active_panel()
             .ok_or(anyhow!("No active panel"))?;
 
-        if let Some(img_file) = &panel.img {
-            let img_file = PathBuf::from(img_file);
-            save_img_name = img_file
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string());
-            let file = if img_file.is_absolute() {
-                img_file
-            } else {
-                config_dir.join(img_file)
-            };
-            info!("Loading panel image {file:?}...");
-            rgb_img = img::load_image(&file, DISPLAY_SIZE)?;
-        } else {
-            save_img_name = None;
-            rgb_img = RgbImage::new(DISPLAY_SIZE.0, DISPLAY_SIZE.1);
-        }
-
         let panel_switch_time = Instant::now();
 
         // active panel refresh loop
@@ -250,24 +241,14 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
         loop {
             let upd_start_time = Instant::now();
 
-            let out_filename = if let Some(save_path) = &img_save_path {
-                let save_path = save_path.as_ref();
-                Some(save_path.join(format!(
-                    "{}-{refresh_count:02}.png",
-                    save_img_name.as_deref().unwrap_or("panel")
-                )))
-            } else {
-                None
-            };
+            if img_save_path.is_some() {
+                renderer.set_img_suffix(format!("-{refresh_count:02}"));
+            }
 
-            update_panel(
-                screen,
-                &rgb_img,
-                &mut fh,
-                panel,
-                sensor_values.clone(),
-                out_filename,
-            )?;
+            // Keeping the read lock during panel rendering should be ok, otherwise we could always clone the HashMap
+            let values = sensor_values.read().expect("RwLock is poisoned");
+            update_panel(screen, &mut renderer, panel, &values)?;
+            drop(values);
 
             let elapsed = upd_start_time.elapsed();
             if refresh > elapsed {
@@ -282,6 +263,28 @@ fn run_sensor_panel<P: AsRef<Path>, B: Into<PathBuf>>(
             refresh_count += 1;
         }
     }
+}
+
+fn update_panel(
+    screen: &mut AooScreen,
+    renderer: &mut PanelRenderer,
+    panel: &Panel,
+    values: &HashMap<String, String>,
+) -> anyhow::Result<()> {
+    debug!(
+        "Displaying panel {}...",
+        panel
+            .name
+            .as_deref()
+            .unwrap_or_else(|| panel.id.as_deref().unwrap_or_default())
+    );
+
+    match renderer.render(panel, values) {
+        Ok(image) => screen.send_image(&image)?,
+        Err(e) => error!("Error rendering panel: {e:?}"),
+    }
+
+    Ok(())
 }
 
 fn run_demo(
@@ -315,22 +318,12 @@ fn run_demo(
                 );
             }
 
-            let mut fh = FontHandler::new(font_dir);
-            let out_filename = if save_images {
-                fs::create_dir_all("out")?;
-                Some("out/demo_panel.png")
-            } else {
-                None
-            };
+            let mut renderer = PanelRenderer::new(DISPLAY_SIZE, &font_dir, &config_dir);
+            renderer.set_save_render_img(save_images);
+            renderer.set_save_processed_pic(save_images);
+            renderer.set_save_progress_layer(save_images);
 
-            update_panel(
-                screen,
-                &rgb_img,
-                &mut fh,
-                panel,
-                Arc::new(RwLock::new(demo_values)),
-                out_filename,
-            )?;
+            update_panel(screen, &mut renderer, panel, &demo_values)?;
         } else {
             error!("No active panel found");
         }
@@ -417,13 +410,6 @@ fn demo_blinds(
 
     for y in 0..DISPLAY_SIZE.1 {
         let color = *rgb_img.get_pixel(width + 1, y);
-        // draw_antialiased_line_segment_mut(
-        //     &mut rgb_img,
-        //     (0, y as i32),
-        //     (width as i32, y as i32),
-        //     color,
-        //     interpolate,
-        // );
         draw_line_segment_mut(
             &mut rgb_img,
             (0.0, y as f32),
@@ -431,13 +417,6 @@ fn demo_blinds(
             color,
         );
         let color = *rgb_img.get_pixel(DISPLAY_SIZE.0 - width - 1, y);
-        // draw_antialiased_line_segment_mut(
-        //     &mut rgb_img,
-        //     ((DISPLAY_SIZE.0 - width) as i32, y as i32),
-        //     (DISPLAY_SIZE.0 as i32, y as i32),
-        //     color,
-        //     interpolate,
-        // );
         draw_line_segment_mut(
             &mut rgb_img,
             ((DISPLAY_SIZE.0 - width) as f32, y as f32),
@@ -458,91 +437,4 @@ fn demo_blinds(
     screen.send_image(&rgb_img)?;
 
     Ok(rgb_img)
-}
-
-fn update_panel<P: AsRef<Path>>(
-    screen: &mut AooScreen,
-    background: &RgbImage,
-    fh: &mut FontHandler,
-    panel: &Panel,
-    values: Arc<RwLock<HashMap<String, String>>>,
-    img_save_path: Option<P>,
-) -> anyhow::Result<()> {
-    debug!(
-        "Displaying panel {}...",
-        panel
-            .name
-            .as_deref()
-            .unwrap_or_else(|| panel.id.as_deref().unwrap_or_default())
-    );
-
-    let mut rgb_img = background.clone();
-
-    for sensor in &panel.sensor {
-        if sensor.mode != SensorMode::Text {
-            debug!(
-                "Skipping sensor {}: unsupported sensor mode {:?}",
-                sensor.label, sensor.mode
-            );
-            continue;
-        }
-
-        let values = values.read().expect("RwLock is poisoned");
-        let value = values.get(&sensor.label).cloned();
-        let unit = values
-            .get(&format!("{}#unit", sensor.label))
-            .cloned()
-            .or_else(|| sensor.unit.clone())
-            .unwrap_or_default();
-        drop(values);
-
-        if let Some(value) = value {
-            let font = fh.get_ttf_font_or_default(&sensor.font_family);
-            // TODO verify pixel scaling! Is font_size point size or pixel size?
-            // This is still a bit off compared to the original AOOSTAR-X. Only tested with HarmonyOS_Sans_SC_Bold!
-            let adjustment_hack = 0.7;
-            let scale = font
-                .pt_to_px_scale(sensor.font_size as f32 * adjustment_hack)
-                .unwrap();
-
-            let text = format_value(
-                &value,
-                sensor.integer_digits.into(),
-                sensor.decimal_digits.unwrap_or_default() as usize,
-                &unit,
-            );
-            let size = text_size(scale, &font, &text);
-            // TODO verify x & y-coordinate handling
-            let x = match sensor.text_align {
-                TextAlign::Left => sensor.x as i32,
-                TextAlign::Center => sensor.x as i32 - (size.0 / 2) as i32,
-                TextAlign::Right => sensor.x as i32 - size.0 as i32,
-            };
-            let y = (sensor.y - scale.y / 2f32) as i32;
-            // let y = sensor.y as i32 - (size.1 / 2) as i32;
-
-            debug!(
-                "Sensor({:03},{:03}), pixel({x:03},{y:03}), size{size:?}: {text}",
-                sensor.x, sensor.y
-            );
-
-            draw_text_mut(
-                &mut rgb_img,
-                sensor.font_color.into(),
-                x,
-                y,
-                scale,
-                &font,
-                &text,
-            );
-        }
-    }
-
-    screen.send_image(&rgb_img)?;
-
-    if let Some(path) = img_save_path {
-        rgb_img.save_with_format(path, image::ImageFormat::Png)?;
-    }
-
-    Ok(())
 }
