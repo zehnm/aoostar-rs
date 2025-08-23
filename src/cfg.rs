@@ -322,7 +322,7 @@ pub struct Sensor {
 }
 
 /// Sensor element type. Name is based on AOOSTAR-X web configuration
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, Eq, Hash, PartialEq)]
 #[repr(u8)]
 pub enum SensorMode {
     /// Text element

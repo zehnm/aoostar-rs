@@ -40,7 +40,7 @@ impl From<std::io::Error> for ImageProcessingError {
 /// All defined fonts and images of a sensor panel are cached after first use.
 pub struct PanelRenderer {
     size: Size,
-    composite_layers: Vec<RgbaImage>,
+    composite_layer_map: HashMap<SensorMode, RgbaImage>,
     font_handler: FontHandler,
     image_cache: ImageCache,
     // for debugging: save images for inspection
@@ -64,7 +64,7 @@ impl PanelRenderer {
     pub fn new(size: Size, font_dir: impl Into<PathBuf>, img_dir: impl Into<PathBuf>) -> Self {
         Self {
             size,
-            composite_layers: Vec::new(),
+            composite_layer_map: HashMap::new(),
             font_handler: FontHandler::new(font_dir),
             image_cache: ImageCache::new(img_dir),
             save_render_img: false,
@@ -133,7 +133,7 @@ impl PanelRenderer {
         } else {
             RgbaImage::new(self.size.0, self.size.1)
         };
-        self.composite_layers.clear();
+        self.composite_layer_map.clear();
 
         let final_image = self.render_all_sensors(panel, values, background)?;
 
@@ -304,19 +304,17 @@ impl PanelRenderer {
             (start, end)
         };
 
-        // TODO optimize: use a single overlay for all fan sensors
-        let mut sector_layer = self.create_layer();
+        if let Some(sector_layer) = self.get_layer(SensorMode::Fan) {
+            PanelRenderer::draw_pie_slice(
+                sector_layer,
+                &target_image,
+                pos_x,
+                pos_y,
+                start_angle,
+                end_angle,
+            );
+        }
 
-        self.draw_pie_slice(
-            &mut sector_layer,
-            &target_image,
-            pos_x,
-            pos_y,
-            start_angle,
-            end_angle,
-        );
-
-        self.composite_layers.push(sector_layer);
         Ok(())
     }
 
@@ -390,22 +388,20 @@ impl PanelRenderer {
         let pos_x = sensor.x as i32;
         let pos_y = sensor.y as i32;
 
-        // TODO optimize: use a single overlay for all progress sensors. Each overlay uses > 1MB!
-        let mut progress_layer = self.create_layer();
-        self.paste_image(&mut progress_layer, &processed_img, pos_x, pos_y);
+        if let Some(progress_layer) = self.get_layer(SensorMode::Progress) {
+            PanelRenderer::paste_image(progress_layer, &processed_img, pos_x, pos_y);
 
-        if self.save_progress_layer {
-            let name = format!(
-                "progress_layer-{}{}.png",
-                sensor.label,
-                self.img_suffix.as_deref().unwrap_or_default()
-            );
-            if let Err(e) = processed_img.save(self.img_save_path.join(name)) {
-                error!("Error saving progress layer image: {e}");
+            if self.save_progress_layer {
+                let name = format!(
+                    "progress_layer-{}{}.png",
+                    sensor.label,
+                    self.img_suffix.as_deref().unwrap_or_default()
+                );
+                if let Err(e) = processed_img.save(self.img_save_path.join(name)) {
+                    error!("Error saving progress layer image: {e}");
+                }
             }
         }
-
-        self.composite_layers.push(progress_layer);
         Ok(())
     }
 
@@ -492,18 +488,15 @@ impl PanelRenderer {
         let final_x = x_center + offset_x - (rotated_pic.width() / 2) as i32;
         let final_y = y_center + offset_y - (rotated_pic.height() / 2) as i32;
 
-        // TODO optimize: use a single overlay for all pointer sensors
-        let mut pointer_layer = self.create_layer();
-        self.paste_image(&mut pointer_layer, &rotated_pic, final_x, final_y);
-
-        self.composite_layers.push(pointer_layer);
+        if let Some(pointer_layer) = self.get_layer(SensorMode::Pointer) {
+            PanelRenderer::paste_image(pointer_layer, &rotated_pic, final_x, final_y);
+        }
         Ok(())
     }
 
     /// Draws a pie‐slice sector of `source` into `layer`, centered at (center_x, center_y),
     /// from `start_deg` to `end_deg` (both in degrees), blending with alpha.
     fn draw_pie_slice(
-        &self,
         layer: &mut RgbaImage,
         source: &RgbaImage,
         center_x: i32,
@@ -608,7 +601,7 @@ impl PanelRenderer {
     }
 
     /// Paste an image onto another image at specified position
-    fn paste_image(&self, target: &mut RgbaImage, source: &RgbaImage, x: i32, y: i32) {
+    fn paste_image(target: &mut RgbaImage, source: &RgbaImage, x: i32, y: i32) {
         let (target_w, target_h) = target.dimensions();
         let (source_w, source_h) = source.dimensions();
 
@@ -653,6 +646,14 @@ impl PanelRenderer {
         }
     }
 
+    fn get_layer(&mut self, mode: SensorMode) -> Option<&mut RgbaImage> {
+        if !self.composite_layer_map.contains_key(&mode) {
+            self.composite_layer_map.insert(mode, self.create_layer());
+        }
+
+        self.composite_layer_map.get_mut(&mode)
+    }
+
     /// Create an overlay image buffer with the same dimensions as the panel
     fn create_layer(&self) -> RgbaImage {
         ImageBuffer::from_fn(self.size.0, self.size.1, |_, _| Rgba([0, 0, 0, 0]))
@@ -660,27 +661,31 @@ impl PanelRenderer {
 
     /// Composite all layers into final image
     fn composite_layers(&mut self, background: &mut RgbaImage) {
-        for layer in &self.composite_layers {
-            // Find bounding box of non-transparent pixels
-            let bbox = self.get_bounding_box(layer);
+        // quick and dirty, this should be an ordered enum variant list
+        let modes = [SensorMode::Fan, SensorMode::Progress, SensorMode::Pointer];
+        for mode in modes {
+            if let Some(layer) = self.composite_layer_map.get(&mode) {
+                // Find bounding box of non-transparent pixels
+                let bbox = PanelRenderer::get_bounding_box(layer);
 
-            if let Some((min_x, min_y, max_x, max_y)) = bbox {
-                // Composite the layer onto final image
-                for y in min_y..=max_y {
-                    for x in min_x..=max_x {
-                        let layer_pixel = *layer.get_pixel(x, y);
-                        if layer_pixel[3] > 0 {
-                            // If not fully transparent
-                            let final_pixel = background.get_pixel_mut(x, y);
+                if let Some((min_x, min_y, max_x, max_y)) = bbox {
+                    // Composite the layer onto final image
+                    for y in min_y..=max_y {
+                        for x in min_x..=max_x {
+                            let layer_pixel = *layer.get_pixel(x, y);
+                            if layer_pixel[3] > 0 {
+                                // If not fully transparent
+                                let final_pixel = background.get_pixel_mut(x, y);
 
-                            // Alpha compositing
-                            let alpha = layer_pixel[3] as f32 / 255.0;
-                            let inv_alpha = 1.0 - alpha;
+                                // Alpha compositing
+                                let alpha = layer_pixel[3] as f32 / 255.0;
+                                let inv_alpha = 1.0 - alpha;
 
-                            for i in 0..4 {
-                                final_pixel[i] = ((layer_pixel[i] as f32 * alpha)
-                                    + (final_pixel[i] as f32 * inv_alpha))
-                                    as u8;
+                                for i in 0..4 {
+                                    final_pixel[i] = ((layer_pixel[i] as f32 * alpha)
+                                        + (final_pixel[i] as f32 * inv_alpha))
+                                        as u8;
+                                }
                             }
                         }
                     }
@@ -690,7 +695,7 @@ impl PanelRenderer {
     }
 
     /// Get bounding box of non-transparent pixels
-    fn get_bounding_box(&self, image: &RgbaImage) -> Option<(u32, u32, u32, u32)> {
+    fn get_bounding_box(image: &RgbaImage) -> Option<(u32, u32, u32, u32)> {
         let (width, height) = image.dimensions();
         let mut min_x = width;
         let mut min_y = height;

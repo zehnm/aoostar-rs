@@ -5,10 +5,7 @@
 
 use bytes::{BufMut, BytesMut};
 use image::imageops::FilterType;
-use image::{
-    DynamicImage, GenericImageView, ImageBuffer, ImageReader, ImageResult, RgbImage, Rgba,
-    RgbaImage,
-};
+use image::{DynamicImage, GenericImageView, ImageBuffer, ImageReader, RgbImage, Rgba, RgbaImage};
 use imageproc::geometric_transformations::{Interpolation, rotate};
 use log::{debug, warn};
 use std::collections::HashMap;
