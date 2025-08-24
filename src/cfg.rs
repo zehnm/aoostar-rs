@@ -7,16 +7,16 @@
 //! Likely not fully compatible with files created with the original editor.
 
 use anyhow::Context;
-use image::Rgb;
+use image::{Rgb, Rgba};
 use imageproc::definitions::HasWhite;
-use log::warn;
+use log::{info, warn};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::io::BufReader;
 use std::num::ParseIntError;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::{fmt, fs};
 
 pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
@@ -52,6 +52,51 @@ pub fn load_cfg<P: AsRef<Path>>(path: P) -> anyhow::Result<MonitorConfig> {
     }
 
     Ok(config)
+}
+
+/// Load a custom panel configuration.
+///
+/// The distributed panel ZIP file must be extracted and contain:
+/// - `panel.json` configuration file
+/// - `img` subdirectory containing the referenced images in panel.json
+/// - `fonts` subdirectory containing the referenced fonts in panel.json
+///
+/// # Arguments
+///
+/// * `path`: directory path of the extracted custom panel.
+///
+/// returns: Result<Panel, Error>
+pub fn load_custom_panel<P: AsRef<Path>>(path: P) -> anyhow::Result<Panel> {
+    let path = path.as_ref();
+    let panel_file = path.join("panel.json");
+
+    info!("Loading custom panel {panel_file:?}");
+
+    let file = fs::File::open(&panel_file)
+        .with_context(|| format!("Failed to load custom panel {panel_file:?}"))?;
+    let reader = BufReader::new(file);
+    let mut panel: Panel = serde_json::from_reader(reader)?;
+
+    // adjust font and image file paths
+    let img_path = fs::canonicalize(path.join("img"))?;
+    let font_path = fs::canonicalize(path.join("fonts"))?;
+    if let Some(img) = &panel.img
+        && !Path::new(img).is_absolute()
+    {
+        panel.img = Some(img_path.join(img).display().to_string());
+    }
+    for sensor in panel.sensor.iter_mut() {
+        if let Some(pic) = &sensor.pic
+            && !Path::new(pic).is_absolute()
+        {
+            sensor.pic = Some(img_path.join(pic).display().to_string());
+        }
+        if !sensor.font_family.is_empty() && !Path::new(&sensor.font_family).is_absolute() {
+            sensor.font_family = font_path.join(&sensor.font_family).display().to_string();
+        }
+    }
+
+    Ok(panel)
 }
 
 /// AOOSTAR-X monitor json configuration file
@@ -96,6 +141,11 @@ impl MonitorConfig {
         }
 
         None
+    }
+
+    pub fn include_custom_panel(&mut self, panel: Panel) {
+        self.panels.push(panel);
+        self.active_panels.push(self.panels.len() as u32);
     }
 }
 
@@ -153,7 +203,7 @@ pub struct Setup {
 /// Language setting.
 ///
 /// Not used, part of AOOSTAR-X json configuration file.
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]
 #[allow(dead_code)]
 pub enum Language {
@@ -163,7 +213,7 @@ pub enum Language {
 }
 
 /// Not used, part of AOOSTAR-X json configuration file.
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
+#[derive(Debug, Copy, Clone, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(i16)]
 #[allow(dead_code)]
 pub enum OperationMode {
@@ -174,6 +224,17 @@ pub enum OperationMode {
     Custom30W = 3,
     Custom20W = 4,
     Custom10W = 5,
+}
+
+#[derive(Debug, Copy, Clone, Serialize_repr, Deserialize_repr, PartialEq)]
+#[repr(u8)]
+pub enum SensorDirection {
+    /// Also used for clockwise in circular/arc progress & rotating pointer/dial indicator
+    LeftToRight = 1,
+    /// Also used for counter-clockwise in circular/arc & rotating pointer/dial progress indicator
+    RightToLeft = 2,
+    TopToBottom = 3,
+    BottomToTop = 4,
 }
 
 /// Custom DIY panel definition
@@ -195,6 +256,25 @@ pub struct Panel {
     pub img: Option<String>,
     /// Sensors
     pub sensor: Vec<Sensor>,
+}
+
+impl Panel {
+    pub fn friendly_name(&self) -> String {
+        self.name
+            .clone()
+            .or_else(|| self.id.clone())
+            .or_else(|| {
+                if let Some(img_file) = &self.img {
+                    let img_file = PathBuf::from(img_file);
+                    img_file
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_string())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| "panel".into())
+    }
 }
 
 /// One Data Display Unit
@@ -223,21 +303,27 @@ pub struct Sensor {
     /// Sensor value. Ignored: value is used from a sensor source
     #[serde(deserialize_with = "empty_string_as_none")]
     pub value: Option<String>, // "" or numbers, so Option<String>
+
+    /// Image for progress, fan and pointer indicators
+    pub min_value: Option<f32>,
+    /// Image for progress, fan and pointer indicators
+    pub max_value: Option<f32>,
+
     /// Optional unit text to print after the value
     #[serde(deserialize_with = "empty_string_as_none")]
     pub unit: Option<String>,
     /// x-position. Custom panel coordinates are stored as float!
+    // TODO use i32 and round from f32 in deserialization
     pub x: f32,
     /// y-position.
+    // TODO use i32 and round from f32 in deserialization
     pub y: f32,
-    /// _Not (yet) used_
+    /// Used for pointer type
     pub width: Option<i32>,
-    /// _Not (yet) used_
+    /// Used for pointer type
     pub height: Option<i32>,
-    /// _Not (yet) used_
-    pub text_direction: i32, // layout direction
-    /// _Not (yet) used_
-    pub direction: i32, // sensor orientation, 0/1
+    /// Sensor graphic orientation
+    pub direction: Option<SensorDirection>,
 
     /// Font name matching font filename without file extension.
     pub font_family: String,
@@ -257,23 +343,25 @@ pub struct Sensor {
     // -1 ≈ unset ⇒ Option<i32>
     #[serde(deserialize_with = "option_none_if_minus_one")]
     pub decimal_digits: Option<i32>,
-    /*
-    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
-    pub min_angle: i32,
-    pub max_angle: i32,
-    pub min_value: i32,
-    pub max_value: i32,
-
-    /// TODO determine meaning of: pic - render picture?
+    /// Image for progress, fan and pointer indicators
     #[serde(deserialize_with = "empty_string_as_none")]
-    pub pic: Option<String>, // "" when unused
+    pub pic: Option<String>,
+
+    /// Used for fan & pointer sensors
+    pub min_angle: Option<i32>,
+    /// Used for fan & pointer sensors
+    pub max_angle: Option<i32>,
+
     /// Pivot x
     #[serde(rename = "xz_x")]
     pub xz_x: Option<i32>,
     /// Pivot y
     #[serde(rename = "xz_y")]
     pub xz_y: Option<i32>,
-
+    /*
+    // The following fields of the AOOSTAR-X json configuration file are NOT used in `asterctl`
+    /// _Not (yet) used_
+    pub text_direction: i32, // layout direction
     /// For type = 6
     pub url: Option<String>,
     /// For type = 6
@@ -283,12 +371,17 @@ pub struct Sensor {
      */
 }
 
-#[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
+/// Sensor element type. Name is based on AOOSTAR-X web configuration
+#[derive(Debug, Clone, Copy, Serialize_repr, Deserialize_repr, Eq, Hash, PartialEq)]
 #[repr(u8)]
 pub enum SensorMode {
+    /// Text element
     Text = 1,
+    /// Circular/arc progress indicator
     Fan = 2,
+    /// Horizontal or vertical progress indicator
     Progress = 3,
+    /// Rotating pointer/dial indicator
     Pointer = 4,
 }
 
@@ -385,7 +478,7 @@ impl TryFrom<&str> for FontColor {
     type Error = ParseIntError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value.len() != 7 || value.starts_with('#') {
+        if value.len() != 7 || !value.starts_with('#') {
             warn!("Invalid font color: {value}");
             Ok(FontColor::default())
         } else {
@@ -407,6 +500,12 @@ impl From<Rgb<u8>> for FontColor {
 impl From<FontColor> for Rgb<u8> {
     fn from(val: FontColor) -> Self {
         val.0
+    }
+}
+
+impl From<FontColor> for Rgba<u8> {
+    fn from(val: FontColor) -> Self {
+        Rgba([val.0[0], val.0[1], val.0[2], 255])
     }
 }
 

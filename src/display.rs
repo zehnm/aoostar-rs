@@ -2,10 +2,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2025 Markus Zehnder
 
 use crate::dummy_serialport::DummySerialPort;
-use crate::img::rgb888_to_565;
+use crate::img::ToRgb565;
 use anyhow::{Context, anyhow};
 use bytes::{BufMut, BytesMut};
-use image::RgbImage;
 use log::{debug, error, info, warn};
 use serialport::{SerialPort, SerialPortType};
 use std::io::{Read, Write};
@@ -178,8 +177,8 @@ impl AooScreen {
             .with_context(|| "Failed to send display off")
     }
 
-    pub fn send_image(&mut self, rgb_img: &RgbImage) -> anyhow::Result<()> {
-        let img_rgb565 = rgb888_to_565(rgb_img)?;
+    pub fn send_image(&mut self, image: impl ToRgb565) -> anyhow::Result<()> {
+        let img_rgb565 = image.to_rgb565_le();
         debug!(
             "Start sending image (size {}) {} cache... ",
             img_rgb565.len(),
