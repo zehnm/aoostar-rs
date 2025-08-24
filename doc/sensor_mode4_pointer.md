@@ -1,6 +1,7 @@
 # Sensor Mode 4 Pointer
 
-A pointer sensor rotates an image at a certain angle calculated from the current sensor value and overlays it on the panel.
+A pointer sensor rotates an image at a certain angle calculated from the current sensor value and alpha-blends it with
+the panel image.
 
 Sensor configuration fields:
 - `mode`: 4 (for pointer)
@@ -17,7 +18,9 @@ Sensor configuration fields:
 
 The following configuration and graphics are taken from the `三环_windows` panel configuration in `有线网卡 windows驱动.rar`.
 
-Example `panel.json` with a single "pointer" indicator sensor:
+Example `panel.json` with a single "pointer" indicator sensor and the following (partial) background image in `img`:
+
+<img src="img/sensor_mode4_background.png" alt="sensor mode 4 background image example">
 
 ```json
 {
@@ -62,5 +65,7 @@ The following graphic is rendered for a sensor value of `47.7`:
 <img src="img/sensor_mode4.png" alt="sensor mode 4 example">
 
 ## Known Issues
+
+Pointer sensor rendering has been reverse engineered from the AOOSTAR-X app. Not all options are supported.
 
 - Work in progress, not yet fully tested
