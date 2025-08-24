@@ -1,6 +1,7 @@
-# asterctl Documentation
+# AOOSTAR WTR MAX Screen Control
 
-- [Linux Shell Control Commands](shell_commands.md) without using asterctl
+- [asterctl usage](asterctl.md)
+- [Linux shell control commands](shell_commands.md) without using asterctl
 
 ## Sensor Panels
 

@@ -99,68 +99,9 @@ The `--bins` option builds the main `asterctl` app and all other tools.
 
 See [Linux systemd Service](linux/) on how to automatically switch off the LCD at boot up.
 
-## Demo App Usage
+## Usage
 
-Currently, the project includes a proof-of-concept demo application that loads an image, draws rectangles, and writes
-text over the image.
-
-By default, the original LCD USB UART device `416:90A1` is used. See optional parameters to specify a different device.
-
-```shell
-cargo run --release -- --demo --config monitor.json
-```
-
-The `--config` parameter is optional. It loads the official configuration file and displays the defined sensors in the
-first panel.
-
-### Parameters
-
-- `--device /dev/ttyACM0` — Specify the serial device.
-- `--usb 0403:6001` — Specify the USB UART device by USB **VID:PID** (hexadecimal, as shown by `lsusb`).
-- `--help` — Show all options.
-
-
-### Sensor Panel
-
-```shell
-asterctl --config monitor.json
-```
-
-See [asterctl documentation](doc/README.md) for more information.
-
-### Control Commands
-
-> Aster: Greek for star and similar to AOOSTAR.
-
-Besides demo mode, the following control commands have been implemented.
-
-The `asterctl` binary is built in `./target/release`.  
-Alternatively, use `cargo run --release --` to build and run automatically, for example: 
-
-```shell
-cargo run --release -- --off
-```
-
-**Switch display on:**
-
-```shell
-asterctl --on
-```
-
-**Switch display off:**
-
-```shell
-asterctl --off
-```
-
-**Load and display an image:**
-
-```shell
-asterctl --image img/aybabtu.png
-```
-
-This expects a 960 × 376 image (other sizes are automatically scaled and the aspect ratio is ignored).
-See Rust image crate for [supported image formats](https://github.com/image-rs/image?tab=readme-ov-file#supported-image-formats).
+See [asterctl documentation](doc/README.md) for more information or run `asterctl --help` for available command line options.
 
 ## Contributing
 
@@ -177,4 +118,3 @@ Licensed under either of
 - MIT License ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
-

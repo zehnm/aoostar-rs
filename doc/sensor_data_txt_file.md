@@ -19,8 +19,6 @@
 
 Example text file for the [cfg/monitor.json](../cfg/monitor.json) panel configuration:
 
-<details>
-
 ```
 cpu_temperature: 65
 cpu_percent: 98
@@ -57,7 +55,3 @@ storage_hdd[4]['used']: 57
 storage_hdd[5]['temperature']: 10
 storage_hdd[5]['used']: 67
 ```
-
-</details>
-
-
