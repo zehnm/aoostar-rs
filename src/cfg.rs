@@ -91,8 +91,11 @@ pub fn load_custom_panel<P: AsRef<Path>>(path: P) -> anyhow::Result<Panel> {
         {
             sensor.pic = Some(img_path.join(pic).display().to_string());
         }
-        if !sensor.font_family.is_empty() && !Path::new(&sensor.font_family).is_absolute() {
-            sensor.font_family = font_path.join(&sensor.font_family).display().to_string();
+        if let Some(font_family) = &sensor.font_family
+            && !font_family.is_empty()
+            && !Path::new(&font_family).is_absolute()
+        {
+            sensor.font_family = Some(font_path.join(font_family).display().to_string());
         }
     }
 
@@ -283,7 +286,7 @@ impl Panel {
 pub struct Sensor {
     /// Sensor mode: text, fan, progress, pointer
     pub mode: SensorMode,
-    /// Sensor type. TODO verify sensor type values
+    /// Sensor type, _not used_.
     /// - 1 Time / Date Labels
     /// - 2 Windows-specific system info
     /// - 3 Hardware value
@@ -293,7 +296,7 @@ pub struct Sensor {
     /// - 7 system info ?
     /// - 8 lm-sensor ?
     #[serde(rename = "type")]
-    pub sensor_type: i32,
+    pub sensor_type: Option<i32>,
     /// Label name for internal panels.
     pub name: Option<String>,
     /// Label name for custom panels.
@@ -312,12 +315,12 @@ pub struct Sensor {
     /// Optional unit text to print after the value
     #[serde(deserialize_with = "empty_string_as_none")]
     pub unit: Option<String>,
-    /// x-position. Custom panel coordinates are stored as float!
-    // TODO use i32 and round from f32 in deserialization
-    pub x: f32,
-    /// y-position.
-    // TODO use i32 and round from f32 in deserialization
-    pub y: f32,
+    /// Rounded x-position. Custom panel coordinates are stored as float!
+    #[serde(deserialize_with = "f32_as_rounded_i32")]
+    pub x: i32,
+    /// Rounded y-position. Custom panel coordinates are stored as float!
+    #[serde(deserialize_with = "f32_as_rounded_i32")]
+    pub y: i32,
     /// Used for pointer type
     pub width: Option<i32>,
     /// Used for pointer type
@@ -326,14 +329,14 @@ pub struct Sensor {
     pub direction: Option<SensorDirection>,
 
     /// Font name matching font filename without file extension.
-    pub font_family: String,
+    pub font_family: Option<String>,
     /// TODO font size unit: points or pixels?
-    pub font_size: i32,
+    pub font_size: Option<i32>,
     /// Font color in `#RRGGBB` notation, or -1 if not set. #ffffff = white, #ff0000 = red
-    pub font_color: FontColor,
+    pub font_color: Option<FontColor>,
     /// _Not (yet) used_
-    pub font_weight: FontWeight,
-    pub text_align: TextAlign,
+    pub font_weight: Option<FontWeight>,
+    pub text_align: Option<TextAlign>,
 
     /// Number of integer places for the sensor value.
     // -1 ≈ unset ⇒ Option<i32>
@@ -429,16 +432,18 @@ pub enum TimeDateLabel {
     HM3,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum FontWeight {
+    #[default]
     Normal,
     Bold,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TextAlign {
+    #[default]
     Left,
     Center,
     Right,
@@ -568,4 +573,12 @@ where
 {
     let option = Option::<String>::deserialize(deserializer)?;
     Ok(option.and_then(|s| if s.trim().is_empty() { None } else { Some(s) }))
+}
+
+fn f32_as_rounded_i32<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let rounded = f32::deserialize(deserializer).map(f32::round)?;
+    Ok(rounded as i32)
 }

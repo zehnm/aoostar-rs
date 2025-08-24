@@ -53,7 +53,6 @@ The background image and sensor definitions are taken from the default system pa
   "sensor": [
     {
       "mode": 1,
-      "type": 1,
       "name": "CPU temp",
       "label": "cpu_temperature",
       "x": 195,
@@ -67,7 +66,6 @@ The background image and sensor definitions are taken from the default system pa
     },
     {
       "mode": 1,
-      "type": 1,
       "name": "CPU usage",
       "label": "cpu_percent",
       "unit": "%",

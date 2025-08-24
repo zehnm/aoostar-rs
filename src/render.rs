@@ -205,15 +205,16 @@ impl PanelRenderer {
         value: &str,
         unit: &str,
     ) -> Result<(), ImageProcessingError> {
-        let font = self
-            .font_handler
-            .get_ttf_font_or_default(&sensor.font_family);
+        let font = if let Some(font_family) = &sensor.font_family {
+            self.font_handler.get_ttf_font_or_default(font_family)
+        } else {
+            FontHandler::default_font()
+        };
+        let font_size = sensor.font_size.unwrap_or(14) as f32;
         // TODO verify pixel scaling! Is font_size point size or pixel size?
         // This is still a bit off compared to the original AOOSTAR-X. Only tested with HarmonyOS_Sans_SC_Bold!
         let adjustment_hack = 0.7;
-        let scale = font
-            .pt_to_px_scale(sensor.font_size as f32 * adjustment_hack)
-            .unwrap();
+        let scale = font.pt_to_px_scale(font_size * adjustment_hack).unwrap();
 
         let text = format_value(
             value,
@@ -223,12 +224,12 @@ impl PanelRenderer {
         );
         let size = text_size(scale, &font, &text);
         // TODO verify x & y-coordinate handling
-        let x = match sensor.text_align {
-            TextAlign::Left => sensor.x as i32,
-            TextAlign::Center => sensor.x as i32 - (size.0 / 2) as i32,
-            TextAlign::Right => sensor.x as i32 - size.0 as i32,
+        let x = match sensor.text_align.unwrap_or_default() {
+            TextAlign::Left => sensor.x,
+            TextAlign::Center => sensor.x - (size.0 / 2) as i32,
+            TextAlign::Right => sensor.x - size.0 as i32,
         };
-        let y = (sensor.y - scale.y / 2f32) as i32;
+        let y = (sensor.y as f32 - scale.y / 2f32) as i32;
         // let y = sensor.y as i32 - (size.1 / 2) as i32;
 
         debug!(
@@ -236,7 +237,7 @@ impl PanelRenderer {
             sensor.x, sensor.y
         );
 
-        let font_color = sensor.font_color.into();
+        let font_color = sensor.font_color.unwrap_or_default().into();
         draw_text_mut(background, font_color, x, y, scale, &font, &text);
 
         Ok(())
@@ -257,8 +258,8 @@ impl PanelRenderer {
             return Err(ImageProcessingError::InvalidDirection(direction));
         }
 
-        let pos_x = sensor.x as i32;
-        let pos_y = sensor.y as i32;
+        let pos_x = sensor.x;
+        let pos_y = sensor.y;
 
         let pic_path = sensor.pic.as_ref().ok_or_else(|| {
             ImageProcessingError::ImageLoadError("No picture specified".to_string())
@@ -385,8 +386,8 @@ impl PanelRenderer {
             }
         }
 
-        let pos_x = sensor.x as i32;
-        let pos_y = sensor.y as i32;
+        let pos_x = sensor.x;
+        let pos_y = sensor.y;
 
         if let Some(progress_layer) = self.get_layer(SensorMode::Progress) {
             PanelRenderer::paste_image(progress_layer, &processed_img, pos_x, pos_y);
@@ -420,8 +421,8 @@ impl PanelRenderer {
             return Err(ImageProcessingError::InvalidDirection(direction));
         }
 
-        let x_center = sensor.x as i32;
-        let y_center = sensor.y as i32;
+        let x_center = sensor.x;
+        let y_center = sensor.y;
         let xz_x = sensor.xz_x.unwrap_or(0);
         let xz_y = sensor.xz_y.unwrap_or(0);
 
@@ -429,6 +430,7 @@ impl PanelRenderer {
             ImageProcessingError::ImageLoadError("No picture specified".to_string())
         })?;
 
+        // TODO combine get image with resize
         let mut pic = self
             .image_cache
             .get(pic_path, None)
