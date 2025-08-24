@@ -322,9 +322,9 @@ pub struct Sensor {
     #[serde(deserialize_with = "f32_as_rounded_i32")]
     pub y: i32,
     /// Used for pointer type
-    pub width: Option<i32>,
+    pub width: Option<u32>,
     /// Used for pointer type
-    pub height: Option<i32>,
+    pub height: Option<u32>,
     /// Sensor graphic orientation
     pub direction: Option<SensorDirection>,
 

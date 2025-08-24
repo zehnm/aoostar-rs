@@ -430,26 +430,19 @@ impl PanelRenderer {
             ImageProcessingError::ImageLoadError("No picture specified".to_string())
         })?;
 
-        // TODO combine get image with resize
-        let mut pic = self
+        // Resize if dimensions specified
+        let size = if let (Some(width), Some(height)) = (sensor.width, sensor.height) {
+            Some((width, height))
+        } else {
+            None
+        };
+        let pic = self
             .image_cache
-            .get(pic_path, None)
+            .get(pic_path, size)
             .ok_or_else(|| {
                 ImageProcessingError::ImageLoadError(format!("Failed to load: {:?}", pic_path))
             })?
             .clone();
-
-        // Resize if dimensions specified
-        if let (Some(width), Some(height)) = (sensor.width, sensor.height) {
-            let item_width = width as u32;
-            let item_height = height as u32;
-            pic = image::imageops::resize(
-                &pic,
-                item_width,
-                item_height,
-                image::imageops::FilterType::Lanczos3,
-            );
-        }
 
         let min_val = sensor.min_value.unwrap_or(0.0);
         let max_val = sensor.max_value.unwrap_or(100.0);
