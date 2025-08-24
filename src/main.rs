@@ -252,6 +252,7 @@ fn run_sensor_panel<B: Into<PathBuf>>(
             .get_next_active_panel()
             .ok_or(anyhow!("No active panel"))?;
 
+        info!("Switching panel: {}", panel.friendly_name());
         let panel_switch_time = Instant::now();
 
         // active panel refresh loop
@@ -274,7 +275,6 @@ fn run_sensor_panel<B: Into<PathBuf>>(
             }
 
             if panel_switch_time.elapsed() >= switch_time {
-                info!("Switching panels");
                 break;
             }
 
@@ -289,17 +289,11 @@ fn update_panel(
     panel: &Panel,
     values: &HashMap<String, String>,
 ) -> anyhow::Result<()> {
-    debug!(
-        "Displaying panel {}...",
-        panel
-            .name
-            .as_deref()
-            .unwrap_or_else(|| panel.id.as_deref().unwrap_or_default())
-    );
+    debug!("Displaying panel '{}'...", panel.friendly_name());
 
     match renderer.render(panel, values) {
         Ok(image) => screen.send_image(&image)?,
-        Err(e) => error!("Error rendering panel: {e:?}"),
+        Err(e) => error!("Error rendering panel '{}': {e:?}", panel.friendly_name()),
     }
 
     Ok(())
