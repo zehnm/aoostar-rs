@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // SPDX-FileCopyrightText: Copyright (c) 2025 Markus Zehnder
 
-use crate::dummy_serialport::DummySerialPort;
-use crate::img::ToRgb565;
+use crate::FakeSerialPort;
+use crate::ToRgb565;
+
 use anyhow::{Context, anyhow};
 use bytes::{BufMut, BytesMut};
 use log::{debug, error, info, warn};
@@ -68,7 +69,7 @@ impl AooScreenBuilder {
     /// Simulate the LCD device. No real device or serial port is required.
     pub fn simulate(self) -> anyhow::Result<AooScreen> {
         Ok(AooScreen {
-            port: Some(Box::new(DummySerialPort::new())),
+            port: Some(Box::new(FakeSerialPort::new())),
             enable_cache: self.enable_cache.unwrap_or(true),
             prev_frame: None,
             no_init_check: self.no_init_check.unwrap_or(false),

@@ -5,7 +5,7 @@
 
 use crate::cfg::{Panel, Sensor, SensorDirection, SensorMode, TextAlign};
 use crate::font::FontHandler;
-use crate::format_value::format_value;
+use crate::format_value;
 use crate::img::{ImageCache, Size, rotate_image};
 use ab_glyph::Font;
 use image::{ImageBuffer, Rgba, RgbaImage};

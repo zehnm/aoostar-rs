@@ -1,4 +1,4 @@
-# AOOSTAR WTR MAX Screen Control
+# AOOSTAR WTR MAX / GEM12+ PRO Screen Control
 
 Reverse engineering the [AOOSTAR WTR MAX](https://aoostar.com/products/aoostar-wtr-max-amd-r7-pro-8845hs-11-bays-mini-pc)
 display protocol, with a proof-of-concept application written in Rust.  
@@ -20,14 +20,14 @@ Note: Multiple attempts to contact the manufacturer for documentation have recei
 
 With that out of the way, on to the fun stuff!
 
-**See [Linux shell commands](doc/shell_commands.md) on how to switch off the display with standard Linux commands!**
+**See [Linux shell commands](docs/shell_commands.md) on how to switch off the display with standard Linux commands!**
 
 See [releases](https://github.com/zehnm/aoostar-rs/releases) for binary Linux x64 releases and [Linux systemd Service](linux/)
 on how to automatically switch off the LCD at boot up. A Debian package for easy installation is planned for the future!
 
 ## Reverse Engineering
 
-Reverse engineered LCD commands: [doc/lcd_protocol.md](doc/lcd_protocol.md)
+Reverse engineered LCD commands: [docs/lcd_protocol.md](docs/lcd_protocol.md)
 
 ### Motivation
 
@@ -90,10 +90,8 @@ cd aoostar-rs
 A release build is highly recommended, as it significantly improves graphics performance:
 
 ```shell
-cargo build --release --bins --all-features
+cargo build --release
 ```
-
-The `--bins` option builds the main `asterctl` app and all other tools.
 
 ### Install
 
@@ -101,7 +99,7 @@ See [Linux systemd Service](linux/) on how to automatically switch off the LCD a
 
 ## Usage
 
-See [asterctl documentation](doc/README.md) for more information or run `asterctl --help` for available command line options.
+See [asterctl documentation](docs/README.md) for more information or run `asterctl --help` for available command line options.
 
 ## Contributing
 

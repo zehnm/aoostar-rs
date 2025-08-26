@@ -2,9 +2,6 @@
 
 > Aster: Greek for star and similar to AOOSTAR.
 
-Currently, the project includes a proof-of-concept demo application that loads an image, draws rectangles, and writes
-text over the image.
-
 A work-in-progress "panel-mode" mimics the AOOSTAR-X software and uses the same configuration files for rendering sensor
 panels with dynamic sensor values.
 
@@ -51,9 +48,6 @@ Options:
       --sensor-path <SENSOR_PATH>
           Single sensor value input file or directory for multiple sensor input files. Default: `./cfg/sensors`
 
-      --demo
-          Run a demo
-
   -o, --off-after <OFF_AFTER>
           Switch off display n seconds after loading image or running demo
 
@@ -72,21 +66,6 @@ Options:
   -V, --version
           Print version
 ```
-
-## Demo Mode
-
-```shell
-cargo run --release -- --demo --config monitor.json
-```
-
-The `--config` parameter is optional. It loads the official configuration file and displays the defined sensors in the
-first panel.
-
-### Parameters
-
-- `--device /dev/ttyACM0` — Specify the serial device.
-- `--usb 0403:6001` — Specify the USB UART device by USB **VID:PID** (hexadecimal, as shown by `lsusb`).
-- `--help` — Show all options.
 
 ## Sensor Panel Mode
 
@@ -122,3 +101,19 @@ asterctl --image img/aybabtu.png
 
 This expects a 960 × 376 image (other sizes are automatically scaled and the aspect ratio is ignored).
 See Rust image crate for [supported image formats](https://github.com/image-rs/image?tab=readme-ov-file#supported-image-formats).
+
+## Demo app
+
+```shell
+cargo run --release --bin demo -- --config monitor.json
+```
+
+The `--config` parameter is optional. It loads the official configuration file and displays the defined sensors in the
+first panel.
+
+### Parameters
+
+- `--device /dev/ttyACM0` — Specify the serial device.
+- `--usb 0403:6001` — Specify the USB UART device by USB **VID:PID** (hexadecimal, as shown by `lsusb`).
+- `--help` — Show all options.
+

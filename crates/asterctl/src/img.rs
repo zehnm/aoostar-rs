@@ -3,9 +3,8 @@
 
 //! Image helper functions.
 
-use bytes::{BufMut, BytesMut};
 use image::imageops::FilterType;
-use image::{DynamicImage, GenericImageView, ImageBuffer, ImageReader, RgbImage, Rgba, RgbaImage};
+use image::{DynamicImage, GenericImageView, ImageBuffer, ImageReader, Rgba, RgbaImage};
 use imageproc::geometric_transformations::{Interpolation, rotate};
 use log::{debug, warn};
 use std::collections::HashMap;
@@ -37,45 +36,6 @@ where
         Ok(img.resize_exact(size.0, size.1, FilterType::Lanczos3))
     } else {
         Ok(img)
-    }
-}
-
-/// Trait definition to get a RGB 565 representation from a source image.
-pub trait ToRgb565 {
-    /// Get an RGB 565 representation of the image in little endian format.
-    fn to_rgb565_le(&self) -> BytesMut;
-
-    /// Convert a single RGB 888 pixel to 16 bit RGB 565 format.
-    fn convert_rgb(&self, r: u8, g: u8, b: u8) -> u16 {
-        ((r & 248) as u16) << 8 | ((g & 252) as u16) << 3 | ((b as u16) >> 3)
-    }
-}
-
-// TODO quick & dirty approach for converting RgbImage & RgbaImage to RGB 565.
-//      There should be a more generic way, maybe with PixelEnumerator...
-impl ToRgb565 for &RgbImage {
-    fn to_rgb565_le(&self) -> BytesMut {
-        let mut img_rgb565 =
-            BytesMut::with_capacity(self.width() as usize * self.height() as usize * 2);
-
-        for (_x, _y, pixel) in self.enumerate_pixels() {
-            img_rgb565.put_u16_le(self.convert_rgb(pixel.0[0], pixel.0[1], pixel.0[2]));
-        }
-
-        img_rgb565
-    }
-}
-
-impl ToRgb565 for &RgbaImage {
-    fn to_rgb565_le(&self) -> BytesMut {
-        let mut img_rgb565 =
-            BytesMut::with_capacity(self.width() as usize * self.height() as usize * 2);
-
-        for (_x, _y, pixel) in self.enumerate_pixels() {
-            img_rgb565.put_u16_le(self.convert_rgb(pixel.0[0], pixel.0[1], pixel.0[2]));
-        }
-
-        img_rgb565
     }
 }
 

@@ -1,6 +1,6 @@
 # sysinfo Tool
 
-The Rust based [/src/bin/sysinfo.rs](../src/bin/sysinfo.rs) tool gathers many more system sensor values with the help of
+The Rust based [sysinfo](../crates/sysinfo/src/main.rs) tool gathers many more system sensor values with the help of
 the [sysinfo](https://github.com/GuillaumeGomez/sysinfo) crate.
 
 It supports FreeBSD, Linux, macOS, Windows and other OSes, but it has only been tested on Linux so far.

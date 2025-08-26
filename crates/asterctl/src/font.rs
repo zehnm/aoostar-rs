@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 static DEFAULT_TTF_FONT: Lazy<FontArc> = Lazy::new(|| {
     FontArc::new(
-        FontRef::try_from_slice(include_bytes!("../fonts/DejaVuSans.ttf"))
+        FontRef::try_from_slice(include_bytes!("../../../fonts/DejaVuSans.ttf"))
             .expect("Failed to load default font"),
     )
 });

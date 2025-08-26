@@ -1,0 +1,19 @@
+[package]
+name = "sysinfo"
+version = "0.1.0"
+description = "System sensor provider for asterctl"
+
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { version = "4.5.42", features = ["derive"] }
+sysinfo = "0.37.0"
+itertools = "0.14"
+tempfile = "3"
+log = "0.4.27"
+env_logger = "0.11.8"
+regex = "1.11"
