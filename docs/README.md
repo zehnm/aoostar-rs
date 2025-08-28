@@ -36,15 +36,11 @@ Only the file data source is supported at the moment, other sources like pipes, 
 - [LCD Protocol](lcd_protocol.md)
 - [GitHub project](https://github.com/zehnm/aoostar-rs)
 
-### Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
 ## License
 
 Licensed under either of
 
-- [Apache License, Version 2.0](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
-- [MIT License](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+- [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+- [MIT License](http://opensource.org/licenses/MIT)
 
 at your option.

@@ -59,7 +59,7 @@ The original AOOSTAR-X json configuration file format is used, but only a subset
     - `min_angle` and `max_angle`
     - `xz_x` and `xz_y`
 
-Example configuration file: [cfg/monitor.json](../../cfg/monitor.json).
+Example configuration file: [cfg/monitor.json](https://github.com/zehnm/aoostar-rs/blob/main/cfg/monitor.json).
 
 Sensor values are not read from the configuration file (the `sensor.value` field is ignored). See data sources below.
 

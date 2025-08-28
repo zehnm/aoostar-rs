@@ -24,10 +24,20 @@ Note: Multiple attempts to contact the manufacturer for documentation have recei
 
 With that out of the way, on to the fun stuff!
 
-**See [Linux shell commands](docs/shell_commands.md) on how to switch off the display with standard Linux commands!**
-
 See [releases](https://github.com/zehnm/aoostar-rs/releases) for binary Linux x64 releases and [Linux systemd Service](linux/)
 on how to automatically switch off the LCD at boot up. A Debian package for easy installation is planned for the future!
+
+## Features
+
+- Control the AOOSTAR WTR MAX and GEM12+ PRO second screen from Linux.
+- Switch the display on or off.
+  - Also possible with standard [Linux shell commands](docs/shell_commands.md).
+  - [Linux systemd Service](docs/linux/README.md) to automatically switch off the LCD at boot up.
+- Display images (with automatic scaling and partial update support).
+- Render dynamic sensor panels defined from the AOOSTAR-X software.
+    - Update sensor values from simple text files.
+    - Rotate through multiple panels in a defined interval.
+- USB device/serial port selection.
 
 ## Reverse Engineering
 
@@ -61,51 +71,6 @@ The display remains on continuously (24×7) if the official software is not runn
 - Reverse engineering the microcontroller firmware on the display board.  
   That would be an interesting task — potentially uncovering additional display commands — but is outside the project's current scope.
 - Reimplementing the full AOOSTAR-X display software, which is overly complex for most use cases.
-
-### Features
-
-- Control the AOOSTAR WTR MAX and GEM12+ PRO second screen from Linux.
-- Switch the display on or off.
-- Display images (with automatic scaling and partial update support).
-- Render dynamic sensor panels defined from the AOOSTAR-X software.
-  - Update sensor values from simple text files.
-  - Rotate through multiple panels in a defined interval.
-- USB device/serial port selection.
-
-## Setup
-
-### Requirements
-
-1. A recent [Rust](https://rustup.rs/) toolchain is required, using `rust-up` is the easiest way to get everything set up.
-
-2. Install required build dependencies (shown for Ubuntu 25.04):
-
-```shell
-sudo apt install build-essential git pkg-config libudev-dev
-```
-
-3. Checkout project:
-
-```shell
-git clone https://github.com/zehnm/aoostar-rs.git
-cd aoostar-rs
-```
-
-### Build
-
-A release build is highly recommended, as it significantly improves graphic rendering performance:
-
-```shell
-cargo build --release
-```
-
-### Install
-
-See [Linux systemd Service](linux/) on how to automatically switch off the LCD at boot up.
-
-## Usage
-
-See [asterctl documentation](docs/README.md) for more information or run `asterctl --help` for available command line options.
 
 ## Contributing
 
