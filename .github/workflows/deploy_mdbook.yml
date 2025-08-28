@@ -1,9 +1,8 @@
 name: Deploy mdbook
 on:
   push:
-# FIXME disabled for testing new feature branch!
-#    branches:
-#      - main
+    branches:
+      - main
     paths:
       - 'book.toml'
       - 'docs/**'
