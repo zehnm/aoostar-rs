@@ -4,6 +4,8 @@ Reverse engineering the [AOOSTAR WTR MAX](https://aoostar.com/products/aoostar-w
 display protocol, with a proof-of-concept application written in Rust.  
 It has only been tested on the WTR MAX, but should also support the GEM12+ PRO device.
 
+The documentation is available here: https://zehnm.github.io/aoostar-rs/
+
 **Disclaimer: ‼️ EXPERIMENTAL — use at your own risk ‼️**
 
 > I take no responsibility for the use of this software.  
