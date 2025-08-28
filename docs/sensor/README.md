@@ -2,6 +2,7 @@
 
 - [Sensor panels](panel.md)
 - [Custom sensor panels](custom_panel.md)
+- [Configuration](cfg/)
 
 ## Sensor Modes
 
