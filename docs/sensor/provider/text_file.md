@@ -17,7 +17,7 @@
     - If a directory is specified, all children matching the sensor file naming pattern will be read and monitored.
     - Any subdirectories are ignored (no recursive support).
 
-Example text file for the [cfg/monitor.json](../cfg/monitor.json) panel configuration:
+Example text file for the [cfg/monitor.json](../../../cfg/monitor.json) panel configuration:
 
 ```
 cpu_temperature: 65

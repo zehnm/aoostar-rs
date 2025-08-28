@@ -42,7 +42,7 @@ The sensor value can be formatted with the `unit` and `integerDigits` & `decimal
 
 Example `panel.json` with two "text" indicator sensors and the following (partial) background image in `img`:
 
-<img src="img/sensor_mode1_background.png" alt="sensor mode 1 background image example">
+<img src="../../img/sensor_mode1_background.png" alt="sensor mode 1 background image example">
 
 The background image and sensor definitions are taken from the default system panel configuration in the AOOSTAR-X app.
 
@@ -84,7 +84,7 @@ The background image and sensor definitions are taken from the default system pa
 
 The following graphic is rendered for the two text fields defined above:
 
-<img src="img/sensor_mode1.png" alt="sensor mode 1 example">
+<img src="../../img/sensor_mode1.png" alt="sensor mode 1 example">
 
 ## Known Issues
 

@@ -20,7 +20,7 @@ The following configuration and graphics are taken from the `三环_windows` pan
 
 Example `panel.json` with a single "pointer" indicator sensor and the following (partial) background image in `img`:
 
-<img src="img/sensor_mode4_background.png" alt="sensor mode 4 background image example">
+<img src="../../img/sensor_mode4_background.png" alt="sensor mode 4 background image example">
 
 ```json
 {
@@ -52,11 +52,11 @@ Example `panel.json` with a single "pointer" indicator sensor and the following 
 
 Pointer image `"pic": "pointer.png"`:
 
-![pointer graphic](img/mode4_pic.png)
+![pointer graphic](../../img/mode4_pic.png)
 
 The following graphic is rendered for a sensor value of `47.7`:
 
-<img src="img/sensor_mode4.png" alt="sensor mode 4 example">
+<img src="../../img/sensor_mode4.png" alt="sensor mode 4 example">
 
 ## Known Issues
 

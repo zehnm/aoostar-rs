@@ -14,7 +14,7 @@ Sensor configuration fields:
 
 Example `panel.json` with two "progress" indicator sensor and the following (partial) background image in `img`:
 
-<img src="img/sensor_mode3_background.png" alt="sensor mode 3 background image example">
+<img src="../../img/sensor_mode3_background.png" alt="sensor mode 3 background image example">
 
 The background image and sensor definitions are taken from the default system panel configuration in the AOOSTAR-X app.
 
@@ -83,11 +83,11 @@ The background image and sensor definitions are taken from the default system pa
 
 Progress image `"pic": "progress.png"`:
 
-![progress graphic](img/progress.png)
+![progress graphic](../../img/progress.png)
 
 The following graphic is rendered for progress example above:
 
-<img src="img/sensor_mode3.png" alt="sensor mode 3 example">
+<img src="../../img/sensor_mode3.png" alt="sensor mode 3 example">
 
 
 ## Known Issues

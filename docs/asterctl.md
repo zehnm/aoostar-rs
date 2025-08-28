@@ -15,7 +15,8 @@ Usage: asterctl [OPTIONS]
 
 Options:
   -d, --device <DEVICE>
-          Serial device, for example "/dev/cu.usbserial-AB0KOHLS". Takes priority over --usb option
+          Serial device, for example "/dev/cu.usbserial-AB0KOHLS".
+          Takes priority over --usb option
 
   -u, --usb <USB>
           USB serial UART "vid:pid" in hex notation (lsusb output). Default: 416:90A1
@@ -32,21 +33,25 @@ Options:
   -c, --config <CONFIG>
           AOOSTAR-X json configuration file to parse.
           
-          The configuration file will be loaded from the `config_dir` directory if no full path is specified.
+          The configuration file will be loaded from the `config_dir` directory
+          if no full path is specified.
 
   -p, --panels <PANELS>
           Include one or more additional custom panels into the base configuration.
           
-          Specify the path to the panel directory containing panel.json and fonts / img subdirectories.
+          Specify the path to the panel directory containing panel.json and fonts /
+          img subdirectories.
 
       --config-dir <CONFIG_DIR>
-          Configuration directory containing configuration files and background images specified in the `config` file. Default: `./cfg`
+          Configuration directory containing configuration files and background
+          images specified in the `config` file. Default: `./cfg`
 
       --font-dir <FONT_DIR>
           Font directory for fonts specified in the `config` file. Default: `./fonts`
 
       --sensor-path <SENSOR_PATH>
-          Single sensor value input file or directory for multiple sensor input files. Default: `./cfg/sensors`
+          Single sensor value input file or directory for multiple sensor input files.
+          Default: `./cfg/sensors`
 
   -o, --off-after <OFF_AFTER>
           Switch off display n seconds after loading image or running demo
@@ -58,7 +63,8 @@ Options:
           Test mode: save changed images in ./out folder
 
       --simulate
-          Simulate serial port for testing and development, `--device` and `--usb` options are ignored
+          Simulate serial port for testing and development,
+          `--device` and `--usb` options are ignored
 
   -h, --help
           Print help (see a summary with '-h')

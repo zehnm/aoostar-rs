@@ -8,9 +8,9 @@ is only responsible for rendering the panels on the embedded screen.
 
 Example panels from the AOOSTAR-X software, rendered with `asterctl` using dummy sensor values:
 
-<img src="img/sensor_panel-01.png" alt="Sensor panel 1">
+<img src="../img/sensor_panel-01.png" alt="Sensor panel 1">
 
-<img src="img/sensor_panel-02.png" alt="Sensor panel 1">
+<img src="../img/sensor_panel-02.png" alt="Sensor panel 1">
 
 ## Supported Features
 
@@ -59,10 +59,10 @@ The original AOOSTAR-X json configuration file format is used, but only a subset
     - `min_angle` and `max_angle`
     - `xz_x` and `xz_y`
 
-Example configuration file: [cfg/monitor.json](../cfg/monitor.json).
+Example configuration file: [cfg/monitor.json](../../cfg/monitor.json).
 
 Sensor values are not read from the configuration file (the `sensor.value` field is ignored). See data sources below.
 
 More options might be supported later.
 
-See [custom sensor panels](sensor_custom_panel.md) for including custom panels.
+See [custom sensor panels](custom_panel.md) for including custom panels.
