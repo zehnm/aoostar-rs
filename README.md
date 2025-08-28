@@ -2,13 +2,15 @@
 
 Reverse engineering the [AOOSTAR WTR MAX](https://aoostar.com/products/aoostar-wtr-max-amd-r7-pro-8845hs-11-bays-mini-pc)
 display protocol, with a proof-of-concept application written in Rust.  
-This project should also support the GEM12+ PRO device.
+It has only been tested on the WTR MAX, but should also support the GEM12+ PRO device.
 
 **Disclaimer: ‼️ EXPERIMENTAL — use at your own risk ‼️**
 
 > I take no responsibility for the use of this software.  
 > There is no official documentation available;
 > all display control commands have been reverse engineered from the original AOOSTAR-X software.
+
+Even though this software works fine **for me**, I cannot guarantee that it is risk-free:
 
 - It may or may not work.
 - It could crash the display firmware, requiring a power cycle.
@@ -50,7 +52,7 @@ The display remains on continuously (24×7) if the official software is not runn
 - [x] Reverse engineer the LCD serial protocol to provide open screen software.
     - Utilize the official AOOSTAR-X display software by sniffing USB communication, using `strace`, and decompiling the Python app.
 - [x] Document known commands so clients in other programming languages can be written.
-- [ ] Eventually, create a Rust crate for easy integration into other Rust applications.
+- [ ] Eventually, publish a Rust crate for easy integration into other Rust applications.
 
 **Out of scope:**
 
@@ -63,7 +65,9 @@ The display remains on continuously (24×7) if the official software is not runn
 - Control the AOOSTAR WTR MAX and GEM12+ PRO second screen from Linux.
 - Switch the display on or off.
 - Display images (with automatic scaling and partial update support).
-- Proof-of-concept demo for drawing shapes and text.
+- Render dynamic sensor panels defined from the AOOSTAR-X software.
+  - Update sensor values from simple text files.
+  - Rotate through multiple panels in a defined interval.
 - USB device/serial port selection.
 
 ## Setup
@@ -87,7 +91,7 @@ cd aoostar-rs
 
 ### Build
 
-A release build is highly recommended, as it significantly improves graphics performance:
+A release build is highly recommended, as it significantly improves graphic rendering performance:
 
 ```shell
 cargo build --release

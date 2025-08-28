@@ -35,15 +35,15 @@ Options:
           Requires smartctl and password-less sudo!
 ```
 
-Single test run with printing all sensors on the console:
+Single test run with printing all sensors in the console:
 ```shell
 sysinfo --console
 ```
 
-Normal mode providing sensor values for `asterctl` in `/tmp/sensors/sysinfo.txt`:
+Normal mode providing sensor values for `asterctl` in `/tmp/sensors/sysinfo.txt` every 3 seconds:
 
 ```shell
-sysinfo --refresh 3 --out /tmp/sensor/sysinfo.txt
+sysinfo --refresh 3 --out /tmp/sensors/sysinfo.txt
 ```
 
 Note: the lower the refresh rate, the more resources are used!
