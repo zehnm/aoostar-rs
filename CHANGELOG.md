@@ -11,6 +11,10 @@ _Changes in the next release_
 
 ### Added
 - Simple sensor panel with a file-based data source (#6) 
+- Initial support for fan-, progress-, & pointer-sensors (#8)
+
+### Changed
+- Project structure using a Cargo workspace
 
 ---
 

@@ -1,5 +1,5 @@
 cpu_temperature: 65
-cpu_percent: 98
+cpu_percent: 47.7
 memory_usage: 77
 memory_Temperature: 48
 net_ip_address: 146.56.182.244
@@ -17,9 +17,9 @@ storage_ssd[1]['used']: 18
 storage_ssd[2]['temperature']: 33
 storage_ssd[2]['used']: 19
 storage_ssd[3]['temperature']: 34
-storage_ssd[3]['used']: 20
+storage_ssd[3]['used']: 35
 storage_ssd[4]['temperature']: 35
-storage_ssd[4]['used']: 21
+storage_ssd[4]['used']: 80
 storage_hdd[0]['temperature']: 36
 storage_hdd[0]['used']: 22
 storage_hdd[1]['temperature']: 37

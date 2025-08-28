@@ -5,7 +5,7 @@ use serialport::{ClearBuffer, DataBits, FlowControl, Parity, SerialPort, StopBit
 use std::thread::sleep;
 use std::time::Duration;
 
-pub struct DummySerialPort {
+pub struct FakeSerialPort {
     baud_rate: u32,
     data_bits: DataBits,
     flow_control: FlowControl,
@@ -14,8 +14,14 @@ pub struct DummySerialPort {
     timeout: Duration,
 }
 
-impl DummySerialPort {
-    pub fn new() -> DummySerialPort {
+impl Default for FakeSerialPort {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FakeSerialPort {
+    pub fn new() -> FakeSerialPort {
         Self {
             baud_rate: 1_500_000,
             data_bits: DataBits::Eight,
@@ -27,14 +33,14 @@ impl DummySerialPort {
     }
 }
 
-impl std::io::Read for DummySerialPort {
+impl std::io::Read for FakeSerialPort {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         buf[0] = b'A';
         Ok(1)
     }
 }
 
-impl std::io::Write for DummySerialPort {
+impl std::io::Write for FakeSerialPort {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         // just some approximation, additional overhead like flushing etc is not considered
         let byte_rate =
@@ -49,7 +55,7 @@ impl std::io::Write for DummySerialPort {
     }
 }
 
-impl SerialPort for DummySerialPort {
+impl SerialPort for FakeSerialPort {
     fn name(&self) -> Option<String> {
         Some("Dummy Serial".into())
     }

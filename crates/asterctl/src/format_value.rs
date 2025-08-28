@@ -47,7 +47,7 @@ impl From<Option<i32>> for IntegerDigits {
 /// # Examples
 ///
 /// ```
-/// let value = format_value("123.456", IntegerDigits::Auto, 0, "foobar");
+/// let value = asterctl::format_value("123.456", asterctl::IntegerDigits::Auto, 0, "foobar");
 /// assert_eq!(value, "123foobar");
 /// ```
 pub fn format_value(

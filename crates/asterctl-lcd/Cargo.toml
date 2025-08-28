@@ -1,0 +1,18 @@
+[package]
+name = "asterctl-lcd"
+version = "0.1.0"
+description = "AOOSTAR WTR MAX / GEM12+ PRO screen protocol"
+
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1.0.98"
+bytes = "1.10.1"
+# TODO make image an optional feature
+image = "0.25.6"
+log = "0.4.27"
+serialport = "4.7.3"
