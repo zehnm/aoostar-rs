@@ -1,6 +1,6 @@
 # sysinfo Tool
 
-The Rust based [sysinfo](../crates/sysinfo/src/main.rs) tool gathers many more system sensor values with the help of
+The Rust based [sysinfo](https://github.com/zehnm/aoostar-rs/blob/main/crates/sysinfo) tool gathers many more system sensor values with the help of
 the [sysinfo](https://github.com/GuillaumeGomez/sysinfo) crate.
 
 It supports FreeBSD, Linux, macOS, Windows and other OSes, but it has only been tested on Linux so far.
@@ -18,7 +18,8 @@ Options:
           Temporary directory for preparing the output sensor file.
           
           The system temp directory is used if not specified.
-          The temp directory must be on the same file system for atomic rename operation!
+          The temp directory must be on the same file system for atomic rename
+          operation!
 
       --console
           Print values in console
@@ -27,7 +28,8 @@ Options:
           System sensor refresh interval in seconds
 
       --disk-refresh <DISK_REFRESH>
-          Enable individual disk refresh logic as used in AOOSTAR-X. Refresh interval in seconds
+          Enable individual disk refresh logic as used in AOOSTAR-X.
+          Refresh interval in seconds
 
       --smartctl
           Retrieve drive temperature if `disk-update` option is enabled.

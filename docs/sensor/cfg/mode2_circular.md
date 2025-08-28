@@ -20,7 +20,7 @@ The following configuration and graphics are taken from the `仪表盘_windows` 
 
 Example `panel.json` with a single "fan" indicator sensor and the following (partial) background image in `img`:
 
-<img src="img/sensor_mode2_background.jpg" alt="sensor mode 2 background image example">
+<img src="../../img/sensor_mode2_background.jpg" alt="sensor mode 2 background image example">
 
 ```json
 {
@@ -52,11 +52,11 @@ Example `panel.json` with a single "fan" indicator sensor and the following (par
 
 Progress image `"pic": "progress_circle.png"`:
 
-![progress graphic](img/progress_circle.png)
+![progress graphic](../../img/progress_circle.png)
 
 The following graphic is rendered for progress example above:
 
-<img src="img/sensor_mode2.jpg" alt="sensor mode 2 example">
+<img src="../../img/sensor_mode2.jpg" alt="sensor mode 2 example">
 
 
 ## Known Issues

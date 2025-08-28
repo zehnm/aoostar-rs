@@ -1,6 +1,6 @@
 # Sensor Data Provider Shell Scripts
 
-The [/linux/scripts](../linux/scripts) directory contains some proof-of-concept Linux shell scripts.
+The [/linux/scripts](../../../linux/scripts) directory contains some proof-of-concept Linux shell scripts.
 
 CPU and memory usage are written into a sensor data source text file that can be used by `asterctl`.
 

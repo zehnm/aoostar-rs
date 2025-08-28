@@ -12,6 +12,7 @@ _Changes in the next release_
 ### Added
 - Simple sensor panel with a file-based data source (#6) 
 - Initial support for fan-, progress-, & pointer-sensors (#8)
+- Use [mdBook](https://rust-lang.github.io/mdBook/) for documentation and publish user guide to GitHub pages (#10)
 
 ### Changed
 - Project structure using a Cargo workspace
