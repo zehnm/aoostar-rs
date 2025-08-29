@@ -213,7 +213,7 @@ impl PanelRenderer {
         let font_size = sensor.font_size.unwrap_or(14) as f32;
         // TODO verify pixel scaling! Is font_size point size or pixel size?
         // This is still a bit off compared to the original AOOSTAR-X. Only tested with HarmonyOS_Sans_SC_Bold!
-        let adjustment_hack = 0.7;
+        let adjustment_hack = 0.75;
         let scale = font.pt_to_px_scale(font_size * adjustment_hack).unwrap();
 
         let text = format_value(
@@ -223,22 +223,37 @@ impl PanelRenderer {
             unit,
         );
         let size = text_size(scale, &font, &text);
-        // TODO verify x & y-coordinate handling
+        // TODO verify x & y-coordinate handling within the sensor (width, height) box
+        let width = sensor.width.unwrap_or(100) as i32;
+        let height = sensor.height.unwrap_or(40) as i32;
         let x = match sensor.text_align.unwrap_or_default() {
             TextAlign::Left => sensor.x,
-            TextAlign::Center => sensor.x - (size.0 / 2) as i32,
-            TextAlign::Right => sensor.x - size.0 as i32,
+            TextAlign::Center => sensor.x + width / 2 - (size.0 / 2) as i32,
+            TextAlign::Right => sensor.x + width - size.0 as i32,
         };
-        let y = (sensor.y as f32 - scale.y / 2f32) as i32;
-        // let y = sensor.y as i32 - (size.1 / 2) as i32;
 
+        // y-positioning based on AOOSTAR-X logic
+        let y = sensor.y + (height - size.1 as i32) / 2;
         debug!(
             "Sensor({:03},{:03}), pixel({x:03},{y:03}), size{size:?}: {text}",
             sensor.x, sensor.y
         );
 
         let font_color = sensor.font_color.unwrap_or_default().into();
-        draw_text_mut(background, font_color, x, y, scale, &font, &text);
+        // TODO y-position is weird with draw_text_mut: almost like there's a newline at the start!?
+        //      Likely some glyph padding - not my area of expertise :-)
+        //      Try-and-error adjustment: half of font-height seems to position it at the right place...
+        //      Verifiable with drawing text as position (0,0).
+        let y_adjustement = (size.1 / 2) as i32;
+        draw_text_mut(
+            background,
+            font_color,
+            x,
+            y - y_adjustement,
+            scale,
+            &font,
+            &text,
+        );
 
         Ok(())
     }
