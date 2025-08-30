@@ -212,7 +212,9 @@ impl PanelRenderer {
         };
         let font_size = sensor.font_size.unwrap_or(14) as f32;
         // TODO verify pixel scaling! Is font_size point size or pixel size?
-        // This is still a bit off compared to the original AOOSTAR-X. Only tested with HarmonyOS_Sans_SC_Bold!
+        // TODO some font size calculation is missing, dpi scaling? internal padding?
+        //      The adjustment hack is required to get the correct size of the rendered text.
+        //      However, the y-position requires the regular value (see multiplication by 1.33 below)
         let adjustment_hack = 0.75;
         let scale = font.pt_to_px_scale(font_size * adjustment_hack).unwrap();
 
@@ -223,37 +225,31 @@ impl PanelRenderer {
             unit,
         );
         let size = text_size(scale, &font, &text);
-        // TODO verify x & y-coordinate handling within the sensor (width, height) box
-        let width = sensor.width.unwrap_or(100) as i32;
-        let height = sensor.height.unwrap_or(40) as i32;
+        let width = sensor.width.unwrap_or_default() as i32;
+        let height = sensor.height.unwrap_or_default() as i32;
         let x = match sensor.text_align.unwrap_or_default() {
             TextAlign::Left => sensor.x,
             TextAlign::Center => sensor.x + width / 2 - (size.0 / 2) as i32,
             TextAlign::Right => sensor.x + width - size.0 as i32,
         };
 
-        // y-positioning based on AOOSTAR-X logic
-        let y = sensor.y + (height - size.1 as i32) / 2;
+        let y = if height > 0 {
+            // y-position based on AOOSTAR-X logic for custom panels
+            // TODO try-and-error adjustment: half of font-height seems to position it at the right place...
+            //      Verifiable with drawing text as position (0,0). Is there an internal padding?
+            sensor.y + height / 2 - size.1 as i32
+        } else {
+            // system panel with sensor.height=0: sensor.y is the middle of the rendered text
+            // FIXME figure out font scaling factor. See above for y-adjustment hack.
+            sensor.y - (size.1 as f32 * 1.3333 / 2f32) as i32
+        };
         debug!(
             "Sensor({:03},{:03}), pixel({x:03},{y:03}), size{size:?}: {text}",
             sensor.x, sensor.y
         );
 
         let font_color = sensor.font_color.unwrap_or_default().into();
-        // TODO y-position is weird with draw_text_mut: almost like there's a newline at the start!?
-        //      Likely some glyph padding - not my area of expertise :-)
-        //      Try-and-error adjustment: half of font-height seems to position it at the right place...
-        //      Verifiable with drawing text as position (0,0).
-        let y_adjustement = (size.1 / 2) as i32;
-        draw_text_mut(
-            background,
-            font_color,
-            x,
-            y - y_adjustement,
-            scale,
-            &font,
-            &text,
-        );
+        draw_text_mut(background, font_color, x, y, scale, &font, &text);
 
         Ok(())
     }
