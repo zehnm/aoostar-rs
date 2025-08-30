@@ -251,7 +251,6 @@ impl PanelRenderer {
     }
 
     /// Mode 2 - Circular/Arc progress indicator
-    /// TODO needs testing
     fn render_fan(
         &mut self,
         sensor: &Sensor,
@@ -306,7 +305,6 @@ impl PanelRenderer {
             (start, end)
         } else {
             // Counter-clockwise
-            // FIXME SensorDirection::RightToLeft does not yet work. Might also be related to certain minAngle / maxAngle values
             let start = 360.0 - min_angle - (max_angle - min_angle) * progress - 90.0;
             let end = 360.0 - min_angle - 90.0;
             (start, end)
@@ -496,8 +494,22 @@ impl PanelRenderer {
         Ok(())
     }
 
-    /// Draws a pie‐slice sector of `source` into `layer`, centered at (center_x, center_y),
-    /// from `start_deg` to `end_deg` (both in degrees), blending with alpha.
+    /// Draws a pie‐slice sector of the `source` image into the `layer` destination.
+    ///
+    /// Pixels in the sector are alpha-blended from source into the destination layer at the given
+    /// center_x/center_y placement.
+    ///
+    /// Positive and negative angles are supported and are automatically normalized if > +/- 360°.
+    ///
+    /// # Arguments
+    ///
+    /// * `layer`: Destination layer.
+    /// * `source`: Source image to cut out a pie-slice sector.
+    /// * `center_x`: Center x position.
+    /// * `center_y`: Center y position.
+    /// * `start_deg`: Starting angle, in degrees. Angles are measured from 3 o’clock, increasing clockwise.
+    /// * `end_deg`: Ending angle, in degrees.
+    ///
     fn draw_pie_slice(
         layer: &mut RgbaImage,
         source: &RgbaImage,
@@ -510,8 +522,8 @@ impl PanelRenderer {
         // Radius is half the smaller dimension
         let radius = (src_w.min(src_h) as f32) / 2.0;
         // Convert angles to radians and normalize
-        let start = start_deg.to_radians();
-        let end = end_deg.to_radians();
+        let start = (start_deg % 360f32).to_radians();
+        let end = (end_deg % 360f32).to_radians();
         // Helper: check if angle t is between start and end (clockwise)
         let in_sector = |t: f32| {
             let mut a = t;

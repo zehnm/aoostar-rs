@@ -11,6 +11,7 @@ _Changes in the next release_
 
 ### Fixed
 - Misplaced text sensors in custom panels (#11).
+- Wrong start position for circular progress (fan) sensor using a counter-clockwise direction (#12).
 
 ### Added
 - Simple sensor panel with a file-based data source (#6). 
