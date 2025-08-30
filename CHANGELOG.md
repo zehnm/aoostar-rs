@@ -9,18 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Changes in the next release_
 
+### Fixed
+- Misplaced text sensors in custom panels (#11).
+
 ### Added
-- Simple sensor panel with a file-based data source (#6) 
-- Initial support for fan-, progress-, & pointer-sensors (#8)
-- Use [mdBook](https://rust-lang.github.io/mdBook/) for documentation and publish user guide to GitHub pages (#10)
+- Simple sensor panel with a file-based data source (#6). 
+- Initial support for fan-, progress-, & pointer-sensors (#8).
+- Use [mdBook](https://rust-lang.github.io/mdBook/) for documentation and publish user guide to GitHub pages (#10).
 
 ### Changed
-- Project structure using a Cargo workspace
+- Project structure using a Cargo workspace.
 
 ---
 
 ## v0.1.0 - 2025-08-02
 ### Added
-- Initial `asterctl` tool release for controlling the LCD: on, off, display an image
+- Initial `asterctl` tool release for controlling the LCD: on, off, display an image.
 - systemd service file to switch off LCD on system start.
-- Demo mode
+- Demo mode.
