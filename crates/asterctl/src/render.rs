@@ -232,17 +232,13 @@ impl PanelRenderer {
             TextAlign::Center => sensor.x + width / 2 - (size.0 / 2) as i32,
             TextAlign::Right => sensor.x + width - size.0 as i32,
         };
+        // FIXME figure out font scaling factor / padding / dpi etc. See above for y-adjustment hack.
+        // This work quite ok for most panels, but not all!
+        // Some work better with `sensor.y + height / 2 - size.1 as i32;`
+        // The y parameter in `draw_text_mut` is still a mystery: drawing text at position (0,0)
+        // renders a huge gap at the top, about the size of half the font-height!?
+        let y = sensor.y + height / 2 - (size.1 as f32 * 1.3333 / 2f32) as i32;
 
-        let y = if height > 0 {
-            // y-position based on AOOSTAR-X logic for custom panels
-            // TODO try-and-error adjustment: half of font-height seems to position it at the right place...
-            //      Verifiable with drawing text as position (0,0). Is there an internal padding?
-            sensor.y + height / 2 - size.1 as i32
-        } else {
-            // system panel with sensor.height=0: sensor.y is the middle of the rendered text
-            // FIXME figure out font scaling factor. See above for y-adjustment hack.
-            sensor.y - (size.1 as f32 * 1.3333 / 2f32) as i32
-        };
         debug!(
             "Sensor({:03},{:03}), pixel({x:03},{y:03}), size{size:?}: {text}",
             sensor.x, sensor.y
