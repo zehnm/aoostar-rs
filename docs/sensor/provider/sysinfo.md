@@ -1,6 +1,6 @@
-# sysinfo Tool
+# aster-sysinfo Tool
 
-The Rust based [sysinfo](https://github.com/zehnm/aoostar-rs/blob/main/crates/sysinfo) tool gathers many more system sensor values with the help of
+The Rust based [aster-sysinfo](https://github.com/zehnm/aoostar-rs/blob/main/crates/sysinfo) tool gathers many more system sensor values with the help of
 the [sysinfo](https://github.com/GuillaumeGomez/sysinfo) crate.
 
 It supports FreeBSD, Linux, macOS, Windows and other OSes, but it has only been tested on Linux so far.
@@ -8,7 +8,7 @@ It supports FreeBSD, Linux, macOS, Windows and other OSes, but it has only been 
 ```
 Proof of concept sensor value collection for the asterctl screen control tool
 
-Usage: sysinfo [OPTIONS]
+Usage: aster-sysinfo [OPTIONS]
 
 Options:
   -o, --out <OUT>
@@ -39,13 +39,13 @@ Options:
 
 Single test run with printing all sensors in the console:
 ```shell
-sysinfo --console
+aster-sysinfo --console
 ```
 
 Normal mode providing sensor values for `asterctl` in `/tmp/sensors/sysinfo.txt` every 3 seconds:
 
 ```shell
-sysinfo --refresh 3 --out /tmp/sensors/sysinfo.txt
+aster-sysinfo --refresh 3 --out /tmp/sensors/aster-sysinfo.txt
 ```
 
 Note: the lower the refresh rate, the more resources are used!

@@ -1,26 +1,27 @@
-# Linux systemd Service
+# Linux systemd Services
+
+## Switch Off LCD on Boot
 
 The systemd unit [lcd-off.service](https://github.com/zehnm/aoostar-rs/blob/main/linux/lcd-off.service)
 can be installed to automatically switch off the embedded LCD on boot.
 
-The unit file has been tailored to Debian based Linux distros and has been tested on Proxmox 8.4 and Ubuntu 25.04.
+The unit file has been tailored to Debian-based Linux distros and has been tested on Proxmox 8.4 and Ubuntu 25.04.
 
 Requirements:
 - `/dev/ttyACM0`: `dialout` group with rw permissions. 
   - To run as root: remove `DynamicUser` and `Group` settings. 
 
-
-## Install
+### Install
 
 As root user, otherwise `sudo` is required:
 ```shell
-cp asterctl /usr/bin/
+cp asterctl /usr/local/bin/
 cp lcd-off.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable lcd-off
 ```
 
-## Security
+### Security
 
 The systemd unit file uses strong security settings to only allow operations required for `asterctl`:
 
@@ -119,4 +120,25 @@ systemd-analyze security lcd-off.service
 
 ```
 → Overall exposure level for lcd-off.service: 0.8 SAFE 😀
+```
+
+## asterctl Daemon
+
+_TODO_
+
+## aster-sysinfo Daemon
+
+‼️ Work in progress. This also requires the `asterctl` daemon running. 
+
+The systemd unit [aster-sysinfo.service](https://github.com/zehnm/aoostar-rs/blob/main/linux/aster-sysinfo.service)
+can be installed to automatically collect system sensor information for `asterctl`.
+
+### Install
+
+As root user, otherwise `sudo` is required:
+```shell
+cp aster-sysinfo /usr/local/bin/
+cp aster-sysinfo.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable aster-sysinfo
 ```

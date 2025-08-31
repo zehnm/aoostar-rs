@@ -12,12 +12,13 @@ _Changes in the next release_
 ### Fixed
 - Misplaced text sensors in custom panels ([#11](https://github.com/zehnm/aoostar-rs/issues/11)).
 - Wrong start position for circular progress (fan) sensor using a counter-clockwise direction ([#12](https://github.com/zehnm/aoostar-rs/issues/12)).
-- sysinfo tool: make sensor file world-readable, create all parent directories.
+- aster-sysinfo tool: make sensor file world-readable, create all parent directories.
 
 ### Added
 - Simple sensor panel with a file-based data source ([#6](https://github.com/zehnm/aoostar-rs/issues/6)). 
 - Initial support for fan-, progress-, & pointer-sensors ([#8](https://github.com/zehnm/aoostar-rs/pull/8)).
 - Use [mdBook](https://rust-lang.github.io/mdBook/) for documentation and publish user guide to GitHub pages ([#10](https://github.com/zehnm/aoostar-rs/pull/10)).
+- Initial `aster-sysinfo` tool for providing sensor values in a text file for `asterctl`.
 
 ### Changed
 - Project structure using a Cargo workspace.

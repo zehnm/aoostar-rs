@@ -1,0 +1,44 @@
+[Unit]
+Description=Daemon for gathering sensor values for asterctl
+After=local-fs.target
+
+[Service]
+Type=exec
+DynamicUser=true
+
+# Use /run/asterctl directory for writing sensor file
+RuntimeDirectory=asterctl
+#Logging configuration
+#Environment=RUST_LOG=debug
+ExecStart=/usr/local/bin/aster-sysinfo --out /run/asterctl/sensors/sysinfo.txt --temp-dir /run/asterctl --refresh 3
+# Created files are world-readable
+UMask=002
+
+# Lock down service, remove single entries or whole section if metrics gathering doesn't work
+# START lock down
+CapabilityBoundingSet=
+LockPersonality=true
+RestrictNamespaces=true
+ProtectHome=true
+ProtectSystem=strict
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+KeyringMode=private
+ProtectClock=true
+RestrictRealtime=true
+PrivateTmp=true
+PrivateUsers=true
+ProtectHostname=true
+RestrictAddressFamilies=none
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+# END lock down
+
+[Install]
+WantedBy=multi-user.target

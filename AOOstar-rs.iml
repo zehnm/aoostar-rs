@@ -6,10 +6,10 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/asterctl-lcd/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/asterctl/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/asterctl/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/crates/sysinfo/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/aster-sysinfo/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/crates/asterctl-lcd/target" />
-      <excludeFolder url="file://$MODULE_DIR$/crates/sysinfo/target" />
+      <excludeFolder url="file://$MODULE_DIR$/crates/aster-sysinfo/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

@@ -8,11 +8,11 @@ Please note that only Linux has been tested so far.
 
 Executable binaries are available for download on the [GitHub Releases page](https://github.com/zehnm/aoostar-rs/releases).
 Download the binary for your platform (only Linux available at the moment) and extract the archive.
-The archive contains the `asterctl` and `sysinfo` executables which you can run.
+The archive contains the `asterctl` and `aster-sysinfo` executables which you can run.
 
 ## Build from source using Rust
 
-To build the `asterctl` and `sysinfo` executables from source, you will first need to install Rust and Cargo.
+To build the `asterctl` and `aster-sysinfo` executables from source, you will first need to install Rust and Cargo.
 Follow the instructions on the [Rust installation page](https://www.rust-lang.org/tools/install).
 At least Rust version 1.88 is required.
 
