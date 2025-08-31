@@ -96,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         sysinfo_source.update_sensors(&mut sensors)?;
 
         if !disk_refresh.is_zero() && disk_refresh_time.elapsed() > disk_refresh {
-            info!("Refreshing individual disks");
+            debug!("Refreshing individual disks");
             update_linux_storage_sensors(&mut sensors, use_smartctl)?;
             disk_refresh_time = Instant::now();
         }
@@ -194,7 +194,7 @@ impl SysinfoSource {
 
     pub fn refresh(&mut self) {
         self.sys.refresh_all();
-        info!("Refreshing disks, components, networks");
+        debug!("Refreshing disks, components, networks");
         // TODO research "remove_not_listed_###" refresh parameter
         self.disks.refresh(false);
         self.components.refresh(false);
@@ -210,7 +210,7 @@ impl SysinfoSource {
         &self,
         sensors: &mut HashMap<String, String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Refreshing sensors");
+        debug!("Refreshing sensors");
         for cpu in self.sys.cpus() {
             add_sensor(
                 sensors,
