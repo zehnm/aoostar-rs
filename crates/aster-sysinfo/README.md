@@ -37,11 +37,11 @@ Options:
 
 Single test run with printing all sensors in the console:
 ```shell
-sysinfo --console
+aster-sysinfo --console
 ```
 
 Normal mode providing sensor values for `asterctl` in `/tmp/sensors/sysinfo.txt` every 3 seconds:
 
 ```shell
-sysinfo --refresh 3 --out /tmp/sensors/sysinfo.txt
+aster-sysinfo --refresh 3 --out /tmp/sensors/aster-sysinfo.txt
 ```

@@ -1,6 +1,6 @@
 [package]
 name = "asterctl-lcd"
-version = "0.1.0"
+version = "0.2.0"
 description = "AOOSTAR WTR MAX / GEM12+ PRO screen protocol"
 
 rust-version.workspace = true

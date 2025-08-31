@@ -25,4 +25,4 @@ Only the file data source is supported at the moment, other sources like pipes, 
 ### Sensor Data Providers
 
 - Proof of concept [Linux shell scripts](provider/shell_scripts.md)
-- [sysinfo tool](provider/sysinfo.md)
+- [aster-sysinfo tool](provider/sysinfo.md)

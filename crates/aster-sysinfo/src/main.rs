@@ -14,12 +14,13 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::{BufWriter, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, exit};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use sysinfo::{Components, DiskKind, Disks, Networks, System};
-use tempfile::NamedTempFile;
+use tempfile::Builder;
 
 /// Proof of concept sensor value collection for the asterctl screen control tool.
 #[derive(Parser, Debug)]
@@ -65,6 +66,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(not(target_os = "linux"))]
     let use_smartctl = false;
 
+    if let Some(out_file) = &args.out
+        && let Some(parent) = out_file.parent()
+    {
+        fs::create_dir_all(parent)?;
+    }
     let mut sensors = HashMap::with_capacity(64);
     let mut sysinfo_source = SysinfoSource::new();
 
@@ -76,6 +82,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         update_linux_storage_sensors(&mut sensors, use_smartctl)?;
     }
 
+    if !refresh.is_zero() {
+        info!(
+            "Starting aster-sysinfo with refresh={}ms",
+            refresh.as_millis()
+        );
+    }
+
     loop {
         let upd_start_time = Instant::now();
 
@@ -83,7 +96,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         sysinfo_source.update_sensors(&mut sensors)?;
 
         if !disk_refresh.is_zero() && disk_refresh_time.elapsed() > disk_refresh {
-            info!("Refreshing individual disks");
+            debug!("Refreshing individual disks");
             update_linux_storage_sensors(&mut sensors, use_smartctl)?;
             disk_refresh_time = Instant::now();
         }
@@ -123,13 +136,21 @@ fn write_sensor_file(
         exit(1);
     }
 
+    // make sure our sensor file can be read by everyone
+    let all_read_perm = fs::Permissions::from_mode(0o664);
     let tmp_file = if let Some(temp_path) = temp_dir {
         fs::create_dir_all(temp_path)?;
-        NamedTempFile::new_in(temp_path)?
+
+        debug!("Creating a new named temp file in {temp_path:?}");
+        Builder::new()
+            .permissions(all_read_perm)
+            .tempfile_in(temp_path)?
     } else {
-        NamedTempFile::new()?
+        debug!("Creating a new named temp file");
+        Builder::new().permissions(all_read_perm).tempfile()?
     };
 
+    debug!("Writing sensor temp file...");
     let mut stream = BufWriter::new(&tmp_file);
 
     for (label, value) in sensors.iter() {
@@ -138,6 +159,7 @@ fn write_sensor_file(
 
     stream.flush()?;
     drop(stream);
+    debug!("Renaming temp file to: {out_file:?}");
     tmp_file.persist(out_file)?;
 
     Ok(())
@@ -172,6 +194,7 @@ impl SysinfoSource {
 
     pub fn refresh(&mut self) {
         self.sys.refresh_all();
+        debug!("Refreshing disks, components, networks");
         // TODO research "remove_not_listed_###" refresh parameter
         self.disks.refresh(false);
         self.components.refresh(false);
@@ -187,6 +210,7 @@ impl SysinfoSource {
         &self,
         sensors: &mut HashMap<String, String>,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        debug!("Refreshing sensors");
         for cpu in self.sys.cpus() {
             add_sensor(
                 sensors,
