@@ -21,7 +21,7 @@
 - [Sensor Value Provider](sensor/provider/README.md)
     - [Text File Data Source](sensor/provider/text_file.md)
     - [Shell Scripts](sensor/provider/shell_scripts.md)
-    - [Sysinfo Tool](sensor/provider/sysinfo.md)
+    - [aster-sysinfo Tool](sensor/provider/sysinfo.md)
 <!--
 - [For developers](for_developers/panel.md)
 -->
