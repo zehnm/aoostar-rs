@@ -5,8 +5,8 @@ on:
     paths:
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - 'src/**'
-      - '.github/**/*.yml'
+      - 'crates/**'
+      - '.github/workflows/build.yml'
   pull_request:
     branches: [ main ]
     types: [ opened, synchronize, reopened ]
