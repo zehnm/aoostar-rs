@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run sysinfo" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
-q    <option name="command" value="run --bin sysinfo -- --console --out ./cfg/sensors/sysinfo.txt" />
+    <option name="command" value="run --bin aster-sysinfo -- --console --out ./cfg/sensors/sysinfo.txt" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />

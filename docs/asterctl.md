@@ -53,6 +53,13 @@ Options:
           Single sensor value input file or directory for multiple sensor input files.
           Default: `./cfg/sensors`
 
+      --sensor-mapping <SENSOR_MAPPING>
+          Sensor identifier mapping file. Ignored if the file does not exist.
+          
+          The configuration file will be loaded from the `config_dir` directory if no full path is specified.
+          
+          [default: sensor-mapping.cfg]
+
   -o, --off-after <OFF_AFTER>
           Switch off display n seconds after loading image or running demo
 

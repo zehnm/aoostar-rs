@@ -26,3 +26,28 @@ Only the file data source is supported at the moment, other sources like pipes, 
 
 - Proof of concept [Linux shell scripts](provider/shell_scripts.md)
 - [aster-sysinfo tool](provider/sysinfo.md)
+
+### Sensor Identifier Mapping
+
+The original AOOSTAR-X software uses very weird label identifiers (actually sometimes even a composite key depending on
+the data source), which are likely based on an internal JSON structure.
+
+To easily use original custom sensor panels with various sensor data sources, a sensor identifier mapping file can be used.
+
+The mapping file is a simple text file with one identifier mapping per line:
+- Key = label identifier used in panel definition
+- Value = label identifier used in sensor providers
+
+Example:
+
+```
+cpu_temperature: temperature_cpu
+```
+
+This maps the `temperature_cpu` sensor from the `aster-sysinfo` tool to the `cpu_temperature` sensor used in the
+AOOSTAR-X panel definitions.
+
+Usage example:
+```shell
+asterctl --config monitor.json --sensor-mapping sensor-mapping/sysinfo-to-aoostar.cfg
+```
