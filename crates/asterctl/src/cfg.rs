@@ -13,6 +13,7 @@ use log::{info, warn};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::collections::HashMap;
 use std::io::BufReader;
 use std::num::ParseIntError;
 use std::ops::Deref;
@@ -118,6 +119,9 @@ pub struct MonitorConfig {
     /// Internal index of the currently active panel. 1-based!
     #[serde(skip)]
     active_panel_idx: Option<usize>,
+    /// Internal sensor label mapping
+    #[serde(skip)]
+    sensor_mapping: Option<HashMap<String, String>>,
 }
 
 impl MonitorConfig {
@@ -146,9 +150,32 @@ impl MonitorConfig {
         None
     }
 
-    pub fn include_custom_panel(&mut self, panel: Panel) {
+    /// Adds a custom panel to the application and maps sensor labels if applicable.
+    ///
+    /// The panel is marked active and will be returned with [get_next_active_panel] when it is its turn.
+    ///
+    /// # Arguments
+    ///
+    /// * `panel` - the Panel to include in the active panels.
+    pub fn include_custom_panel(&mut self, mut panel: Panel) {
+        if let Some(mapping) = &self.sensor_mapping {
+            panel.map_sensor_labels(mapping);
+        }
         self.panels.push(panel);
         self.active_panels.push(self.panels.len() as u32);
+    }
+
+    /// Apply a sensor label mapping on the included panels.
+    ///
+    /// The mapping will also be applied on any custom panel added in the future with [include_custom_panel].
+    ///
+    /// **Attention**: this method may only be called once at startup.
+    /// Dynamically changing mappings are not supported, and the original sensor labels are not preserved.
+    pub fn set_sensor_mapping(&mut self, mapping: HashMap<String, String>) {
+        for panel in self.panels.iter_mut() {
+            panel.map_sensor_labels(&mapping);
+        }
+        self.sensor_mapping = Some(mapping);
     }
 }
 
@@ -277,6 +304,14 @@ impl Panel {
                 }
             })
             .unwrap_or_else(|| "panel".into())
+    }
+
+    fn map_sensor_labels(&mut self, mapping: &HashMap<String, String>) {
+        for sensor in self.sensor.iter_mut() {
+            if let Some(new_label) = mapping.get(&sensor.label) {
+                sensor.label = new_label.clone();
+            }
+        }
     }
 }
 

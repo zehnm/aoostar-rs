@@ -80,7 +80,7 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
                         debug!("Modified sensor file ({kind:?}): {path:?}");
                         let mut val = file_values.write().expect("Poisoned sensor RwLock");
 
-                        if let Err(e) = read_from_file(path, val.deref_mut()) {
+                        if let Err(e) = read_key_value_file(path, val.deref_mut()) {
                             warn!("Failed to read sensor file {path:?}: {e}");
                             continue;
                         }
@@ -113,7 +113,7 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
     }
 
     if path.is_file() {
-        return read_from_file(path, values);
+        return read_key_value_file(path, values);
     }
 
     for entry in fs::read_dir(path)? {
@@ -121,7 +121,7 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
 
         if path.is_file()
             && path.extension().unwrap_or_default() == "txt"
-            && let Err(e) = read_from_file(&path, values)
+            && let Err(e) = read_key_value_file(&path, values)
         {
             warn!("Failed to read sensor file {path:?}: {e}");
         }
@@ -139,11 +139,11 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
 ///
 /// # Arguments
 ///
-/// * `path`: file path to read
-/// * `values`: HashMap to store read key-value pairs.
+/// * `path`: file path to read.
+/// * `values`: HashMap to insert key-value pairs from the file.
 ///
 /// returns: Result<(), Error>
-fn read_from_file<P: AsRef<Path>>(
+pub fn read_key_value_file<P: AsRef<Path>>(
     path: P,
     values: &mut HashMap<String, String>,
 ) -> anyhow::Result<()> {
