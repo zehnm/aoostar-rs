@@ -1,0 +1,55 @@
+[package]
+name = "aster-prom"
+version = "0.1.0"
+description = "A tool to scrape Prometheus metrics and convert to JSON with Protocol Buffer support"
+
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+keywords = ["prometheus", "metrics", "json", "monitoring"]
+categories = ["command-line-utilities", "web-programming::http-client"]
+
+[build-dependencies]
+# For generating Rust code from protobuf files
+prost-build = "0.14"
+
+[dependencies]
+log = "0.4.27"
+env_logger = "0.11.8"
+tempfile = "3"
+clap = { version = "4", features = ["derive"] }
+itertools = "0.14.0"
+
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+url = "2"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Protocol buffer support
+prost = "0.14"
+prost-types = "0.14"
+bytes = "1.7"
+
+# Prometheus text format parsing (alternative option)
+prometheus-parse = { version = "0.2", optional = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = ["protobuf"]
+# Protocol buffer support (enabled by default)
+protobuf = []
+# Optional feature to use the prometheus-parse crate instead of custom parsing
+prometheus-parse-crate = ["prometheus-parse"]
+
+[profile.release]
+# Optimize for size and performance
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
