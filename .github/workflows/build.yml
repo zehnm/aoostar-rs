@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install build deps
-        run: sudo apt install pkg-config libudev-dev
+        run: sudo apt install pkg-config libudev-dev protobuf-compiler
 
       - uses: auguwu/clippy-action@1.4.0
         with:
