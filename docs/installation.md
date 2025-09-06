@@ -24,7 +24,7 @@ Once you have installed Rust, the following commands can be used to build `aster
 1. On Linux, install required build dependencies (shown for Ubuntu 25.04):
 
 ```shell
-sudo apt install build-essential git pkg-config libudev-dev
+sudo apt install build-essential git pkg-config libudev-dev protobuf-compiler
 ```
 
 2. Checkout project:

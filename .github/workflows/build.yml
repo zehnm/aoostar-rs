@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install build deps
-        run: sudo apt install pkg-config libudev-dev
+        run: sudo apt install pkg-config libudev-dev protobuf-compiler
 
       - uses: auguwu/clippy-action@1.4.0
         with:
@@ -76,7 +76,7 @@ jobs:
           echo "ARTIFACT_NAME=${{ env.APP_NAME }}-$APP_VERSION-${{ env.LINUX_ARTIFACT_SUFFIX }}" >> $GITHUB_ENV
 
       - name: Install build deps
-        run: sudo apt install pkg-config libudev-dev
+        run: sudo apt install pkg-config libudev-dev protobuf-compiler
 
       - name: Cache dependencies
         id: cache-dependencies
@@ -107,6 +107,7 @@ jobs:
           mkdir -p ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
           cp target/release/${{ env.APP_NAME }} ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp target/release/aster-sysinfo ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
+          cp target/release/aster-prom ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp linux/*.service ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           cp -r cfg ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}
           echo "VERSION=${{ env.APP_VERSION }}" > ${GITHUB_WORKSPACE}/${{ env.BIN_OUTPUT_PATH }}/version.txt
