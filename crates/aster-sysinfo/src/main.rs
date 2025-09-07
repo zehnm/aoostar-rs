@@ -83,10 +83,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !refresh.is_zero() {
-        info!(
-            "Starting aster-sysinfo with refresh={}ms",
-            refresh.as_millis()
-        );
+        info!("Starting aster-sysinfo with refresh={}s", refresh.as_secs());
     }
 
     loop {

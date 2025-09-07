@@ -10,14 +10,15 @@ use aster_prom::{CONTENT_TYPE_PROTOBUF, CONTENT_TYPE_TEXT, ClientConfig, PromCli
 use clap::Parser;
 use env_logger::Env;
 use itertools::Itertools;
-use log::{debug, error};
+use log::{debug, error, info};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufWriter, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::time::Duration;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 use tempfile::Builder;
 use url::Url;
 
@@ -41,6 +42,9 @@ struct Args {
     /// Print values in console
     #[arg(long)]
     console: bool,
+    /// System sensor refresh interval in seconds
+    #[arg(short, long, requires = "input")]
+    refresh: Option<u16>,
     /// Client certificate file.
     #[arg(long, value_name = "FILE", requires("key"))]
     cert: Option<String>,
@@ -51,13 +55,13 @@ struct Args {
     #[arg(long)]
     accept_invalid_cert: bool,
     /// The connect timeout in seconds for the HTTP request.
-    #[arg(long, default_value_t = 10, value_name = "SECONDS")]
+    #[arg(long, default_value_t = 10, value_name = "SECONDS", requires = "input")]
     connect_timeout: u8,
     /// The total timeout in seconds for the HTTP request.
-    #[arg(long, default_value_t = 15, value_name = "SECONDS")]
+    #[arg(long, default_value_t = 15, value_name = "SECONDS", requires = "input")]
     timeout: u8,
     /// Use Protocol Buffer format if available instead of text format. EXPERIMENTAL!
-    #[arg(short, long)]
+    #[arg(short, long, requires = "input")]
     proto: bool,
 }
 
@@ -83,44 +87,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = PromClient::new(config)?;
     let input = args.input;
+    let refresh = Duration::from_secs(args.refresh.unwrap_or_default() as u64);
 
-    let (data, content_type) = if let Some(input_arg) = input {
-        // Check if input is a URL or file path
-        if let Ok(url) = Url::parse(&input_arg) {
-            // It's a URL, fetch from HTTP
-            if args.proto {
-                client.fetch_proto_metrics(url.as_str()).await?
-            } else {
-                client.fetch_text_metrics(url.as_str()).await?
-            }
-        } else {
-            // It's a file path, read from file
-            let bytes = std::fs::read(&input_arg)?;
-            let content_type = if input_arg.ends_with(".pb") || input_arg.ends_with(".protobuf") {
-                CONTENT_TYPE_PROTOBUF.to_string()
-            } else {
-                CONTENT_TYPE_TEXT.to_string()
-            };
-            (bytes, content_type)
-        }
-    } else {
-        // Read from STDIN
-        let mut buffer = Vec::new();
-        io::stdin().read_to_end(&mut buffer)?;
-        (buffer, CONTENT_TYPE_TEXT.to_string())
-    };
-
-    let sensors = client.parse_sensor_data(&data, &content_type)?;
-    if let Some(out_file) = &args.out {
-        write_sensor_file(out_file, args.temp_dir.as_deref(), &sensors)?;
+    if !refresh.is_zero() {
+        info!("Starting aster-prom with refresh={}s", refresh.as_secs());
     }
 
-    if args.console {
-        // pretty print console output with sorted keys
-        for (label, value) in sensors.iter().sorted() {
-            println!("{}: {}", label, value);
+    loop {
+        let upd_start_time = Instant::now();
+
+        let (data, content_type) = if let Some(input_arg) = &input {
+            // Check if input is a URL or file path
+            if let Ok(url) = Url::parse(input_arg) {
+                // It's a URL, fetch from HTTP
+                if args.proto {
+                    client.fetch_proto_metrics(url.as_str()).await?
+                } else {
+                    client.fetch_text_metrics(url.as_str()).await?
+                }
+            } else {
+                // It's a file path, read from file
+                let bytes = std::fs::read(input_arg)?;
+                let content_type = if input_arg.ends_with(".pb") || input_arg.ends_with(".protobuf")
+                {
+                    CONTENT_TYPE_PROTOBUF.to_string()
+                } else {
+                    CONTENT_TYPE_TEXT.to_string()
+                };
+                (bytes, content_type)
+            }
+        } else {
+            // Read from STDIN
+            let mut buffer = Vec::new();
+            io::stdin().read_to_end(&mut buffer)?;
+            (buffer, CONTENT_TYPE_TEXT.to_string())
+        };
+
+        let sensors = client.parse_sensor_data(&data, &content_type)?;
+        if let Some(out_file) = &args.out {
+            write_sensor_file(out_file, args.temp_dir.as_deref(), &sensors)?;
         }
-        println!();
+
+        if args.console {
+            // pretty print console output with sorted keys
+            for (label, value) in sensors.iter().sorted() {
+                println!("{}: {}", label, value);
+            }
+            println!();
+        }
+
+        if refresh.is_zero() {
+            break;
+        }
+
+        let elapsed = upd_start_time.elapsed();
+        if refresh > elapsed {
+            sleep(refresh - elapsed);
+        }
     }
 
     Ok(())
