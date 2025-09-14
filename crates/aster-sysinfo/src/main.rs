@@ -224,6 +224,12 @@ impl SysinfoSource {
             );
         }
 
+        add_sensor(
+            sensors,
+            "cpu_usage_percent".to_string(),
+            format!("{:.2}", self.sys.global_cpu_usage()),
+        );
+
         let load_avg = System::load_average();
         add_sensor(sensors, "load_avg_one", format!("{:.2}", load_avg.one));
         add_sensor(sensors, "load_avg_five", format!("{:.2}", load_avg.five));
@@ -265,6 +271,40 @@ impl SysinfoSource {
         );
 
         // System information:
+        let up_secs = System::uptime();
+        let up_days = up_secs / 86400;
+        let up_hours = (up_secs - (up_days * 86400)) / 3600;
+        let up_mins = (up_secs - (up_days * 86400) - (up_hours * 3600)) / 60;
+        add_sensor(sensors, "system_uptime_sec", up_secs);
+        /*
+        Time to look into ftl for i18n
+        The coreutils project did a lot of work that could be used:
+        https://github.com/uutils/coreutils/blob/main/src/uucore/src/lib/mods/locale.rs
+        Then this would be the easy way to format the time, just uses a lot of setup code:
+
+        uptime-format = { $days ->
+            [0] { $time }
+            [one] { $days } day, { $time }
+           *[other] { $days } days { $time }
+        }
+
+        translate!(
+            "uptime-format",
+            "days" => up_days,
+            "time" => format!("{up_hours:02}:{up_mins:02}")
+        )
+         */
+        let day_string = match up_days {
+            0 => "",
+            1 => "1 day, ",
+            n => &format!("{n} days "),
+        };
+        add_sensor(
+            sensors,
+            "system_uptime",
+            format!("{day_string}{up_hours:02}:{up_mins:02}"),
+        );
+
         if let Some(name) = System::name() {
             add_sensor(sensors, "system_name", name);
         }
