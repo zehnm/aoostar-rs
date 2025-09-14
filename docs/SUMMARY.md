@@ -19,6 +19,7 @@
         - [Progress Sensor](sensor/cfg/mode3_progress.md)
         - [Pointer Sensor](sensor/cfg/mode4_pointer.md)
 - [Sensor Value Provider](sensor/provider/README.md)
+    - [Internal Date Time](sensor/provider/internal_date_time.md)
     - [Text File Data Source](sensor/provider/text_file.md)
     - [Shell Scripts](sensor/provider/shell_scripts.md)
     - [aster-sysinfo Tool](sensor/provider/sysinfo.md)

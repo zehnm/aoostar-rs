@@ -15,6 +15,7 @@ asterctl-lcd = { path = "../asterctl-lcd", version = "0.2.0" }
 
 anyhow = "1.0.98"
 clap = { version = "4.5.42", features = ["derive"] }
+chrono = "0.4"
 image = "0.25.6"
 imageproc = { version = "0.25.0", default-features = false }
 ab_glyph = { version = "0.2.31", default-features = false, features = ["std"] }

@@ -3,8 +3,11 @@
 
 //! Sensor value sources.
 //!
-//! Only implementation is a file-based value provider with simple key-value pairs.
+//! Implementations:
+//! - internal date time sensors
+//! - file-based value provider with simple key-value pairs.
 
+use chrono::{DateTime, Datelike, Local, Timelike};
 use log::{debug, error, info, warn};
 use notify::event::{ModifyKind, RenameMode};
 use notify::{Event, EventKind, RecursiveMode, Watcher};
@@ -15,6 +18,46 @@ use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::{Arc, RwLock, mpsc};
+
+pub fn get_date_time_value(label: &str, now: &DateTime<Local>) -> Option<String> {
+    if !label.starts_with("DATE_") {
+        return None;
+    }
+
+    let year = now.year();
+    let month = format!("{:02}", now.month());
+    let day = format!("{:02}", now.day());
+    let hour = format!("{:02}", now.hour());
+    let minute = format!("{:02}", now.minute());
+    let second = format!("{:02}", now.second());
+
+    // same formatting logic as in AOOSTAR-X
+    let value = match label {
+        "DATE_year" => year.to_string(),
+        "DATE_month" => month,
+        "DATE_day" => day,
+        "DATE_hour" => hour,
+        "DATE_minute" => minute,
+        "DATE_second" => second,
+        "DATE_m_d_h_m_1" => format!("{month}月{day}日  {hour}:{minute}"),
+        "DATE_m_d_h_m_2" => format!("{month}/{day}  {hour}:{minute}"),
+        "DATE_m_d_1" => format!("{month}月{day}日"),
+        "DATE_m_d_2" => format!("{month}-{day}"),
+        "DATE_y_m_d_1" => format!("{year}年{month}月{day}日"),
+        "DATE_y_m_d_2" => format!("{year}-{month}-{day}"),
+        "DATE_y_m_d_3" => format!("{year}/{month}/{day}"),
+        "DATE_y_m_d_4" => format!("{year} {month} {day}"),
+        "DATE_h_m_s_1" => format!("{hour}:{minute}:{second}"),
+        "DATE_h_m_s_2" => format!("{hour}时{minute}分{second}秒"),
+        "DATE_h_m_s_3" => format!("{hour} {minute} {second}"),
+        "DATE_h_m_1" => format!("{hour}时{minute}分"),
+        "DATE_h_m_2" => format!("{hour} : {minute}"),
+        "DATE_h_m_3" => format!("{hour}:{minute}"),
+        _ => return None,
+    };
+
+    Some(value)
+}
 
 /// Read all sensor value source files from the given path and stort monitoring for changes.
 ///

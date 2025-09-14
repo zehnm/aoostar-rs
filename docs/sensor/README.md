@@ -15,10 +15,12 @@ Different sensor modes are supported:
 
 ## Sensor Data Sources
 
-The sensor value reading is separated from the `asterctl` tool.
+The sensor value reading is separated from the `asterctl` tool, with the exception of some internal sensors:
+
+- Internal [date time sensors](provider/internal_date_time.md)
 
 Sensor values are provided in separate text files and are automatically read when the file changes.  
-Only the file data source is supported at the moment, other sources like pipes, sockets etc. might be supported later.
+Only the file data source is supported at the moment; other sources like pipes, sockets, etc. might be supported later.
 
 - [Text file data source](provider/text_file.md)
 
