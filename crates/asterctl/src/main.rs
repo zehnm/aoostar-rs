@@ -6,7 +6,7 @@
 
 use asterctl::cfg::{MonitorConfig, Panel, load_custom_panel};
 use asterctl::render::PanelRenderer;
-use asterctl::sensors::{read_key_value_file, start_file_slurper};
+use asterctl::sensors::{read_filter_file, read_key_value_file, start_file_slurper};
 use asterctl::{cfg, img};
 use asterctl_lcd::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 
@@ -14,6 +14,7 @@ use anyhow::anyhow;
 use clap::Parser;
 use env_logger::Env;
 use log::{debug, error, info};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -200,13 +201,35 @@ fn load_configuration<P: AsRef<Path>>(
     };
     if mapping_cfg.is_file() {
         let mut mapping = HashMap::new();
-        read_key_value_file(&mapping_cfg, &mut mapping)?;
+        read_key_value_file(&mapping_cfg, &mut mapping, None)?;
         cfg.set_sensor_mapping(mapping);
     } else {
         info!("Sensor mapping file {mapping_cfg:?} not found");
     }
 
+    cfg.sensor_filter = load_sensor_filter(&mapping_cfg)?;
+
     Ok(cfg)
+}
+
+fn load_sensor_filter(mapping_cfg: &Path) -> anyhow::Result<Option<Vec<Regex>>> {
+    if let Some(parent) = mapping_cfg.parent()
+        && let Some(file_stem) = mapping_cfg.file_stem()
+        && let Some(extension) = mapping_cfg.extension()
+    {
+        let filter_file = parent
+            .join(format!("{}-filter", file_stem.to_string_lossy()))
+            .with_extension(extension);
+
+        if filter_file.is_file() {
+            info!("Loading sensor filter file {filter_file:?}");
+            return read_filter_file(filter_file);
+        } else {
+            info!("No sensor filter file {filter_file:?} available");
+        }
+    }
+
+    Ok(None)
 }
 
 fn run_sensor_panel<B: Into<PathBuf>>(
@@ -231,7 +254,11 @@ fn run_sensor_panel<B: Into<PathBuf>>(
 
     let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
-    start_file_slurper(sensor_path, sensor_values.clone())?;
+    start_file_slurper(
+        sensor_path,
+        sensor_values.clone(),
+        cfg.sensor_filter.clone(),
+    )?;
 
     let refresh = Duration::from_millis((cfg.setup.refresh * 1000f32) as u64);
 

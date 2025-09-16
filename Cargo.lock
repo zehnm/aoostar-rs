@@ -167,6 +167,7 @@ dependencies = [
  "log",
  "notify",
  "once_cell",
+ "regex",
  "rstest",
  "serde",
  "serde_json",

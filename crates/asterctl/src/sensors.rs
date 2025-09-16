@@ -11,6 +11,7 @@ use chrono::{DateTime, Datelike, Local, Timelike};
 use log::{debug, error, info, warn};
 use notify::event::{ModifyKind, RenameMode};
 use notify::{Event, EventKind, RecursiveMode, Watcher};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -71,17 +72,19 @@ pub fn get_date_time_value(label: &str, now: &DateTime<Local>) -> Option<String>
 ///
 /// * `source_path`: Single source file path or a directory path.
 /// * `values`: a shared, reader-writer lock protected HashMap
+/// * `sensor_filter`: Optional list of regex filters to filter out matching sensor keys.
 ///
 /// returns: Result<(), Error>
 pub fn start_file_slurper<P: Into<PathBuf>>(
     source_path: P,
     values: Arc<RwLock<HashMap<String, String>>>,
+    sensor_filter: Option<Vec<Regex>>,
 ) -> anyhow::Result<()> {
     let dir_path = source_path.into();
     // read existing file(s)
     {
         let mut val = values.write().expect("Failed to lock values");
-        read_path(&dir_path, val.deref_mut())?;
+        read_path(&dir_path, val.deref_mut(), sensor_filter.as_deref())?;
     }
 
     let file_values = values.clone();
@@ -97,7 +100,7 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
             }
         };
 
-        info!("Starting sensor file watcher for {dir_path:?}");
+        info!("Starting sensor file watcher for {dir_path:?} with filter {sensor_filter:?}");
         if let Err(e) = watcher.watch(&dir_path, RecursiveMode::NonRecursive) {
             error!("Failed to start file watcher: {e}");
             exit(1);
@@ -123,7 +126,9 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
                         debug!("Modified sensor file ({kind:?}): {path:?}");
                         let mut val = file_values.write().expect("Poisoned sensor RwLock");
 
-                        if let Err(e) = read_key_value_file(path, val.deref_mut()) {
+                        if let Err(e) =
+                            read_key_value_file(path, val.deref_mut(), sensor_filter.as_deref())
+                        {
                             warn!("Failed to read sensor file {path:?}: {e}");
                             continue;
                         }
@@ -146,9 +151,14 @@ pub fn start_file_slurper<P: Into<PathBuf>>(
 ///
 /// * `path`: Single source file path or a directory path.
 /// * `values`: HashMap to store all read key-value pairs.
+/// * `sensor_filter`: Optional list of regex filters to filter out matching sensor keys.
 ///
 /// returns: Result<(), Error>
-fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> anyhow::Result<()> {
+fn read_path<P: AsRef<Path>>(
+    path: P,
+    values: &mut HashMap<String, String>,
+    sensor_filter: Option<&[Regex]>,
+) -> anyhow::Result<()> {
     let path = path.as_ref();
 
     if !path.try_exists()? {
@@ -156,7 +166,7 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
     }
 
     if path.is_file() {
-        return read_key_value_file(path, values);
+        return read_key_value_file(path, values, sensor_filter);
     }
 
     for entry in fs::read_dir(path)? {
@@ -164,7 +174,7 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
 
         if path.is_file()
             && path.extension().unwrap_or_default() == "txt"
-            && let Err(e) = read_key_value_file(&path, values)
+            && let Err(e) = read_key_value_file(&path, values, sensor_filter)
         {
             warn!("Failed to read sensor file {path:?}: {e}");
         }
@@ -184,11 +194,13 @@ fn read_path<P: AsRef<Path>>(path: P, values: &mut HashMap<String, String>) -> a
 ///
 /// * `path`: file path to read.
 /// * `values`: HashMap to insert key-value pairs from the file.
+/// * `sensor_filter`: Optional list of regex filters to filter out matching sensor keys.
 ///
 /// returns: Result<(), Error>
 pub fn read_key_value_file<P: AsRef<Path>>(
     path: P,
     values: &mut HashMap<String, String>,
+    sensor_filter: Option<&[Regex]>,
 ) -> anyhow::Result<()> {
     debug!("Reading sensor file {:?}", path.as_ref());
 
@@ -202,6 +214,13 @@ pub fn read_key_value_file<P: AsRef<Path>>(
             continue;
         }
         if let Some((key, value)) = line.split_once(':') {
+            if let Some(filter) = sensor_filter
+                && is_filtered(key, filter)
+            {
+                debug!("Filtered: {key}");
+                continue;
+            }
+
             values.insert(key.trim().to_string(), value.trim().to_string());
         } else {
             warn!("Skipping invalid entry in sensor value file: {line}");
@@ -209,4 +228,109 @@ pub fn read_key_value_file<P: AsRef<Path>>(
     }
 
     Ok(())
+}
+
+fn is_filtered(key: &str, filters: &[Regex]) -> bool {
+    filters.iter().any(|re| re.is_match(key))
+}
+
+/// Read the sensor filter configuration file.
+///
+/// This is a simple text file containing multiple RegEx expressions.
+/// - one RegEx per line
+/// - Empty lines are skipped
+/// - Lines starting with # are skipped
+///
+/// # Arguments
+///
+/// * `path`: file path to read.
+///
+/// returns: None if the file is empty or contains no valid RegEx expressions.
+///
+pub fn read_filter_file<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Vec<Regex>>> {
+    debug!("Reading sensor filter file {:?}", path.as_ref());
+
+    let mut filters = Vec::new();
+    let file = fs::File::open(path)?;
+    let reader = BufReader::new(file);
+
+    for line in reader.lines() {
+        let line = line?;
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        match Regex::new(line) {
+            Ok(re) => {
+                filters.push(re);
+            }
+            Err(e) => {
+                warn!("Skipping invalid filter in sensor filter file: {line}: {e}");
+            }
+        }
+    }
+
+    if filters.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(filters))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[test]
+    fn is_filtered_does_not_filter_without_filters() {
+        let key = "foobar";
+        let filters = Vec::new();
+        assert!(!is_filtered(key, &filters));
+    }
+
+    #[test]
+    fn test_unit_extension_filter() {
+        let key = "temperature_cpu#unit";
+        let filters = vec![Regex::new("^temperature_.*#unit").unwrap()];
+        assert!(is_filtered(key, &filters));
+    }
+
+    #[rstest]
+    #[case(vec!["^foo$"])]
+    #[case(vec!["^bar"])]
+    #[case(vec!["other"])]
+    #[case(vec!["123", "bla", "other"])]
+    fn is_filtered_does_not_filter_without_a_match(#[case] filters: Vec<&str>) {
+        let key = "foobar";
+        let filters: Vec<Regex> = filters
+            .iter()
+            .map(|f| Regex::new(f).expect("Invalid regex"))
+            .collect();
+        assert!(
+            !is_filtered(key, &filters),
+            "Filter {filters:?} should not match {key}"
+        );
+        //
+    }
+
+    #[rstest]
+    #[case(vec!["foo"])]
+    #[case(vec!["bar"])]
+    #[case(vec!["^.+bar"])]
+    #[case(vec!["123", "foo", "other"])]
+    #[case(vec!["bar", "123"])]
+    #[case(vec!["^.+bar", "other"])]
+    fn is_filtered_matches_filters(#[case] filters: Vec<&str>) {
+        let key = "foobar";
+        let filters: Vec<Regex> = filters
+            .iter()
+            .map(|f| Regex::new(f).expect("Invalid regex"))
+            .collect();
+        assert!(
+            is_filtered(key, &filters),
+            "Filter {filters:?} match match {key}"
+        );
+    }
 }

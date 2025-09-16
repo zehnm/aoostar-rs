@@ -53,3 +53,24 @@ Usage example:
 ```shell
 asterctl --config monitor.json --sensor-mapping sensor-mapping/sysinfo-to-aoostar.cfg
 ```
+
+### Sensor Filter
+
+Sensor entries in the text file can be filtered by regular expressions defined in the sensor filter file having the
+same name as the sensor identifier mapping file, but with the `-filter` suffix in the file name.
+
+Example:
+- Sensor identifier mapping file: `sensor-mapping/sysinfo-to-aoostar.cfg`
+- Sensor filter file: `sensor-mapping/sysinfo-to-aoostar-filter.cfg`
+
+The filter file is a simple text file with one regular expression per line:
+
+Example:
+
+```
+# remove all temperature sensor units
+temperature_.*#unit
+```
+
+This removes all sensors starting with `temperature_` and ending with `#unit`, which will make sure that all the
+temperature sensors will be rendered without the unit text suffix on the display panel.

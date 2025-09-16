@@ -10,6 +10,7 @@ use anyhow::Context;
 use image::{Rgb, Rgba};
 use imageproc::definitions::HasWhite;
 use log::{info, warn};
+use regex::Regex;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -122,6 +123,9 @@ pub struct MonitorConfig {
     /// Internal sensor label mapping
     #[serde(skip)]
     sensor_mapping: Option<HashMap<String, String>>,
+    /// Internal sensor filter
+    #[serde(skip)]
+    pub sensor_filter: Option<Vec<Regex>>,
 }
 
 impl MonitorConfig {
