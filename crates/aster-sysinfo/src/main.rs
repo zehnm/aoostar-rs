@@ -401,8 +401,8 @@ impl SysinfoSource {
                     //          component.label(), component.type_id(), component.id());
                 }
 
-                // TODO add unit as a separate sensor?
-                add_sensor(sensors, label, format!("{temperature:.1} °C"));
+                add_sensor(sensors, format!("{label}#unit"), "°C");
+                add_sensor(sensors, label, format!("{temperature:.1}"));
             }
         }
 
