@@ -7,7 +7,9 @@ use crate::cfg::{Panel, Sensor, SensorDirection, SensorMode, TextAlign};
 use crate::font::FontHandler;
 use crate::format_value;
 use crate::img::{ImageCache, Size, rotate_image};
+use crate::sensors::get_date_time_value;
 use ab_glyph::Font;
+use chrono::{DateTime, Local};
 use image::{ImageBuffer, Rgba, RgbaImage};
 use imageproc::drawing::{draw_text_mut, text_size};
 use log::{debug, error};
@@ -160,6 +162,8 @@ impl PanelRenderer {
         values: &HashMap<String, String>,
         mut background: RgbaImage,
     ) -> Result<RgbaImage, ImageProcessingError> {
+        let now: DateTime<Local> = Local::now();
+
         for sensor in &panel.sensor {
             let value = values.get(&sensor.label).cloned();
             let unit = values
@@ -169,6 +173,8 @@ impl PanelRenderer {
                 .unwrap_or_default();
 
             if let Some(value) = value {
+                self.render_sensor(&mut background, sensor, &value, &unit)?;
+            } else if let Some(value) = get_date_time_value(&sensor.label, &now) {
                 self.render_sensor(&mut background, sensor, &value, &unit)?;
             }
         }

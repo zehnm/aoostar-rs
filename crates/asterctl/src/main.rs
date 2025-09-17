@@ -6,7 +6,7 @@
 
 use asterctl::cfg::{MonitorConfig, Panel, load_custom_panel};
 use asterctl::render::PanelRenderer;
-use asterctl::sensors::start_file_slurper;
+use asterctl::sensors::{read_filter_file, read_key_value_file, start_file_slurper};
 use asterctl::{cfg, img};
 use asterctl_lcd::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 
@@ -14,6 +14,7 @@ use anyhow::anyhow;
 use clap::Parser;
 use env_logger::Env;
 use log::{debug, error, info};
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,7 +27,7 @@ use std::time::{Duration, Instant};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Serial device, for example "/dev/cu.usbserial-AB0KOHLS". Takes priority over --usb option.
+    /// Serial device, for example, "/dev/cu.usbserial-AB0KOHLS". Takes priority over --usb option.
     #[arg(short, long)]
     device: Option<String>,
 
@@ -60,18 +61,24 @@ struct Args {
     panels: Option<Vec<PathBuf>>,
 
     /// Configuration directory containing configuration files and background images
-    /// specified in the `config` file. Default: `./cfg`
-    #[arg(long)]
-    config_dir: Option<PathBuf>,
+    /// specified in the `config` file.
+    #[arg(long, default_value_t = String::from("cfg"))]
+    config_dir: String, // default_value_t requires Display trait which PathBuf does not implement
 
-    /// Font directory for fonts specified in the `config` file. Default: `./fonts`
-    #[arg(long)]
-    font_dir: Option<PathBuf>,
+    /// Font directory for fonts specified in the `config` file.
+    #[arg(long, default_value_t = String::from("fonts"))]
+    font_dir: String,
 
     /// Single sensor value input file or directory for multiple sensor input files.
-    /// Default: `./cfg/sensors`
-    #[arg(long)]
-    sensor_path: Option<PathBuf>,
+    #[arg(long, default_value_t = String::from("cfg/sensors"))]
+    sensor_path: String,
+
+    /// Sensor identifier mapping file. Ignored if the file does not exist.
+    ///
+    /// The configuration file will be loaded from the `config_dir` directory if no full path is
+    /// specified.
+    #[arg(long, default_value_t = String::from("sensor-mapping.cfg"))]
+    sensor_mapping: String,
 
     /// Switch off display n seconds after loading image or running demo.
     #[arg(short, long)]
@@ -130,14 +137,17 @@ fn main() -> anyhow::Result<()> {
             None
         };
 
-        let cfg_dir = args.config_dir.unwrap_or_else(|| "cfg".into());
-        let cfg = load_configuration(&config, &cfg_dir, args.panels)?;
+        let cfg_dir = PathBuf::from(args.config_dir);
+        let font_dir = PathBuf::from(args.font_dir);
+        let sensor_path = PathBuf::from(args.sensor_path);
+        let mapping_cfg = PathBuf::from(args.sensor_mapping);
+        let cfg = load_configuration(&config, &cfg_dir, args.panels, &mapping_cfg)?;
         run_sensor_panel(
             &mut screen,
             cfg,
             cfg_dir,
-            args.font_dir.unwrap_or_else(|| "fonts".into()),
-            args.sensor_path.unwrap_or_else(|| "cfg/sensors".into()),
+            font_dir,
+            sensor_path,
             img_save_path,
         )?;
         return Ok(());
@@ -166,6 +176,7 @@ fn load_configuration<P: AsRef<Path>>(
     config: P,
     config_dir: P,
     panels: Option<Vec<PathBuf>>,
+    sensor_mapping: P,
 ) -> anyhow::Result<MonitorConfig> {
     let config = config.as_ref();
     let config_dir = config_dir.as_ref();
@@ -182,7 +193,43 @@ fn load_configuration<P: AsRef<Path>>(
         }
     }
 
+    let sensor_mapping = sensor_mapping.as_ref();
+    let mapping_cfg = if sensor_mapping.is_absolute() {
+        sensor_mapping.to_path_buf()
+    } else {
+        config_dir.join(sensor_mapping)
+    };
+    if mapping_cfg.is_file() {
+        let mut mapping = HashMap::new();
+        read_key_value_file(&mapping_cfg, &mut mapping, None)?;
+        cfg.set_sensor_mapping(mapping);
+    } else {
+        info!("Sensor mapping file {mapping_cfg:?} not found");
+    }
+
+    cfg.sensor_filter = load_sensor_filter(&mapping_cfg)?;
+
     Ok(cfg)
+}
+
+fn load_sensor_filter(mapping_cfg: &Path) -> anyhow::Result<Option<Vec<Regex>>> {
+    if let Some(parent) = mapping_cfg.parent()
+        && let Some(file_stem) = mapping_cfg.file_stem()
+        && let Some(extension) = mapping_cfg.extension()
+    {
+        let filter_file = parent
+            .join(format!("{}-filter", file_stem.to_string_lossy()))
+            .with_extension(extension);
+
+        if filter_file.is_file() {
+            info!("Loading sensor filter file {filter_file:?}");
+            return read_filter_file(filter_file);
+        } else {
+            info!("No sensor filter file {filter_file:?} available");
+        }
+    }
+
+    Ok(None)
 }
 
 fn run_sensor_panel<B: Into<PathBuf>>(
@@ -207,7 +254,11 @@ fn run_sensor_panel<B: Into<PathBuf>>(
 
     let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
 
-    start_file_slurper(sensor_path, sensor_values.clone())?;
+    start_file_slurper(
+        sensor_path,
+        sensor_values.clone(),
+        cfg.sensor_filter.clone(),
+    )?;
 
     let refresh = Duration::from_millis((cfg.setup.refresh * 1000f32) as u64);
 
