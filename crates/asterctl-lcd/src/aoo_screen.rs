@@ -191,7 +191,7 @@ impl AooScreen {
         );
 
         let start_time = Instant::now();
-        self.send(&HEADER_START)
+        self.write(&HEADER_START)
             .with_context(|| "Failed to send header start")?;
 
         let mut buf = BytesMut::with_capacity(HEADER.len() + 4 + IMG_CHUNK_SIZE);
@@ -216,13 +216,17 @@ impl AooScreen {
             buf.put_u32_le(offset as u32);
             buf.extend(chunk);
 
-            self.send(&buf)
+            self.write(&buf)
                 .with_context(|| format!("Failed to send image data chunk {idx}"))?;
             sent_chunks += 1;
         }
 
-        self.send(&HEADER_END)
+        self.write(&HEADER_END)
             .with_context(|| "Failed to send header end")?;
+
+        // Single flush for the entire frame instead of one per chunk
+        let port = self.port.as_mut().ok_or(anyhow!("LCD port not open"))?;
+        port.flush().with_context(|| "Failed to flush image data")?;
 
         if self.enable_cache {
             self.prev_frame.replace(img_rgb565);
@@ -251,7 +255,16 @@ impl AooScreen {
         self.prev_frame = None;
     }
 
+    /// Write data and flush immediately. Used for control commands (on/off/init).
     fn send(&mut self, data: &[u8]) -> anyhow::Result<()> {
+        self.write(data)?;
+        let port = self.port.as_mut().ok_or(anyhow!("LCD port not open"))?;
+        port.flush()?;
+        Ok(())
+    }
+
+    /// Write data without flushing. Used for image data where a single flush at the end suffices.
+    fn write(&mut self, data: &[u8]) -> anyhow::Result<()> {
         // TODO not sure if retry logic is required. Need a real device to test...
         let mut retry = 0;
 
@@ -259,10 +272,7 @@ impl AooScreen {
 
         loop {
             return match port.write_all(data) {
-                Ok(()) => {
-                    port.flush()?;
-                    Ok(())
-                }
+                Ok(()) => Ok(()),
                 Err(e) => {
                     debug!(
                         "Bytes queued to send: {}",
