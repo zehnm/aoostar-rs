@@ -15,7 +15,7 @@ Requirements:
 
 As root user, otherwise `sudo` is required:
 ```shell
-cp asterctl /usr/local/bin/
+cp asterctl /usr/bin/
 cp lcd-off.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable lcd-off
