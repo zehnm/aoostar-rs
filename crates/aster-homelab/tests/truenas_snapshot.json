@@ -1,0 +1,184 @@
+{
+ "info": {
+  "hostname": "nas",
+  "version": "TrueNAS-25.04.2",
+  "uptime_seconds": 1040400.5
+ },
+ "pools": [
+  {
+   "name": "tank",
+   "status": "DEGRADED",
+   "healthy": false,
+   "size": 1000,
+   "allocated": 850,
+   "free": 150,
+   "scan": {
+    "function": "SCRUB",
+    "state": "FINISHED",
+    "start_time": {
+     "$date": 1762933600000
+    },
+    "end_time": {
+     "$date": 1762940800000
+    },
+    "percentage": 100.0,
+    "errors": 0,
+    "pause": null,
+    "total_secs_left": null
+   }
+  },
+  {
+   "name": "fast",
+   "status": "ONLINE",
+   "healthy": true,
+   "size": 2000,
+   "allocated": 200,
+   "free": 1800,
+   "scan": {
+    "function": "SCRUB",
+    "state": "SCANNING",
+    "start_time": {
+     "$date": 1763196400000
+    },
+    "end_time": null,
+    "percentage": 42.5,
+    "errors": 0,
+    "pause": null,
+    "total_secs_left": 18000
+   }
+  }
+ ],
+ "disks": [
+  {
+   "name": "sdb",
+   "type": "HDD",
+   "model": "WDC WD120EFBX"
+  },
+  {
+   "name": "vda",
+   "type": "HDD",
+   "model": ""
+  },
+  {
+   "name": "nvme0n1",
+   "type": "SSD",
+   "model": "Samsung SSD 990"
+  },
+  {
+   "name": "sda",
+   "type": "HDD",
+   "model": "WDC WD120EFBX"
+  },
+  {
+   "name": "sdc",
+   "type": "HDD",
+   "model": "QEMU HARDDISK"
+  }
+ ],
+ "temperatures": {
+  "sda": 38,
+  "sdb": null,
+  "nvme0n1": {
+   "temp": 63.2
+  }
+ },
+ "alerts": [
+  {
+   "level": "WARNING",
+   "dismissed": false,
+   "formatted": "Scrub of pool fast is overdue"
+  },
+  {
+   "level": "CRITICAL",
+   "dismissed": false,
+   "formatted": "Pool tank state is <b>DEGRADED</b>"
+  },
+  {
+   "level": "CRITICAL",
+   "dismissed": true,
+   "formatted": "old"
+  },
+  {
+   "level": "INFO",
+   "dismissed": false,
+   "formatted": "Update available"
+  }
+ ],
+ "apps": [
+  {
+   "name": "jellyfin",
+   "state": "STOPPED"
+  },
+  {
+   "name": "immich",
+   "state": "RUNNING"
+  }
+ ],
+ "replication": [
+  {
+   "name": "tank -> backup",
+   "enabled": true,
+   "state": {
+    "state": "FINISHED",
+    "datetime": {
+     "$date": 1763178400000
+    }
+   }
+  },
+  {
+   "name": "old replication",
+   "enabled": true,
+   "state": {
+    "state": "FINISHED",
+    "datetime": {
+     "$date": 1762336000000
+    }
+   }
+  },
+  {
+   "name": "disabled",
+   "enabled": false,
+   "state": {
+    "state": "ERROR",
+    "datetime": {
+     "$date": 1763200000000
+    }
+   }
+  }
+ ],
+ "cloudsync": [
+  {
+   "description": "b2 photos",
+   "enabled": true,
+   "job": {
+    "state": "FAILED",
+    "time_started": {
+     "$date": 1763113000000
+    },
+    "time_finished": {
+     "$date": 1763113600000
+    }
+   }
+  }
+ ],
+ "rsync": [],
+ "snapshot_tasks": [
+  {
+   "dataset": "tank/media",
+   "enabled": true,
+   "state": {
+    "state": "FINISHED",
+    "datetime": {
+     "$date": 1763196400000
+    }
+   }
+  },
+  {
+   "dataset": "fast/vm",
+   "enabled": true,
+   "state": {
+    "state": "PENDING"
+   }
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+# sample aster-sysinfo values for previewing the panels
+system_hostname: pve-a
+cpu_usage_percent: 23.4
+mem_usage_percent: 61.8
+mem_used: 38.52 GB
+mem_total: 62.33 GB
+temperature_cpu: 54.6
+temperature_cpu#unit: °C
+disk_/dev/mapper/pve-root_usage_percent: 18.2
+load_avg_one: 1.82
+load_avg_five: 1.45
+load_avg_fifteen: 1.21
+system_uptime: 12 days 04:31
+system_uptime_short: 12d 04h
+network_vmbr0_download_speed: 2.41 MB/s
+network_vmbr0_upload_speed: 312.50 KB/s

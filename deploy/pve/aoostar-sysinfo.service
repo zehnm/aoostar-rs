@@ -1,0 +1,38 @@
+[Unit]
+Description=AOOSTAR LCD: host sensor values (aster-sysinfo)
+After=local-fs.target
+
+[Service]
+Type=exec
+User=aoostar
+Group=aoostar
+RuntimeDirectory=aoostar-sysinfo
+RuntimeDirectoryPreserve=yes
+ExecStart=/opt/aoostar/bin/aster-sysinfo --out /run/aoostar-sysinfo/sysinfo.txt --temp-dir /run/aoostar-sysinfo --refresh 3
+Restart=always
+RestartSec=10
+UMask=0022
+
+CapabilityBoundingSet=
+NoNewPrivileges=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

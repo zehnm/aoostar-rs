@@ -9,7 +9,7 @@ DynamicUser=true
 # tailored to Debian: adapt for other Linux flavours! RW access to /dev/ttyACM0 is required
 Group=dialout
 
-ExecStart=/usr/bin/asterctl --off
+ExecStart=/usr/local/bin/asterctl --off
 
 # lock down service
 CapabilityBoundingSet=

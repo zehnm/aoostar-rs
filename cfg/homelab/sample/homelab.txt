@@ -1,0 +1,195 @@
+# sample aster-homelab values for previewing the panels
+pve_reachable: 1
+pve_status: ONLINE
+pve_status_warn: 2/3 UP
+guests_total: 9
+guests_running: 8
+guests_summary: 8/9
+vms_running: 5
+cts_running: 3
+guest[0]_id: 100
+guest[0]_type: VM
+guest[0]_tag: VM pve-a
+guest[0]_name: opnsense
+guest[0]_status_ok: RUNNING
+guest[0]_cpu_percent: 4.1
+guest[0]_mem_percent: 38.0
+guest[1]_id: 101
+guest[1]_type: VM
+guest[1]_tag: VM pve-a
+guest[1]_name: truenas
+guest[1]_status_ok: RUNNING
+guest[1]_cpu_percent: 12.5
+guest[1]_mem_percent: 88.2
+guest[2]_id: 102
+guest[2]_type: VM
+guest[2]_tag: VM pve-a
+guest[2]_name: homeassistant
+guest[2]_status_ok: RUNNING
+guest[2]_cpu_percent: 2.0
+guest[2]_mem_percent: 51.4
+guest[3]_id: 103
+guest[3]_type: VM
+guest[3]_tag: VM pve-a
+guest[3]_name: docker
+guest[3]_status_ok: RUNNING
+guest[3]_cpu_percent: 31.7
+guest[3]_mem_percent: 64.9
+guest[4]_id: 104
+guest[4]_type: VM
+guest[4]_tag: VM pve-a
+guest[4]_name: win11
+guest[4]_status_warn: STOPPED
+guest[5]_id: 105
+guest[5]_type: VM
+guest[5]_tag: VM pve-a
+guest[5]_name: plex
+guest[5]_status_ok: RUNNING
+guest[5]_cpu_percent: 8.3
+guest[5]_mem_percent: 42.0
+guest[6]_id: 200
+guest[6]_type: CT
+guest[6]_tag: CT pve-b
+guest[6]_name: pihole
+guest[6]_status_ok: RUNNING
+guest[6]_cpu_percent: 0.4
+guest[6]_mem_percent: 22.1
+guest[7]_id: 201
+guest[7]_type: CT
+guest[7]_tag: CT pve-b
+guest[7]_name: uptime-kuma
+guest[7]_status_ok: RUNNING
+guest[7]_cpu_percent: 1.2
+guest[7]_mem_percent: 30.5
+guest[8]_id: 202
+guest[8]_type: CT
+guest[8]_tag: CT pve-b
+guest[8]_name: tailscale
+guest[8]_status_ok: RUNNING
+guest[8]_cpu_percent: 0.1
+guest[8]_mem_percent: 9.8
+truenas_reachable: 1
+truenas_status_ok: ONLINE
+truenas_hostname: truenas
+truenas_version: 25.10.8
+truenas_uptime: 12d 04h
+pool[0]_name: fast
+pool[0]_status_ok: ONLINE
+pool[0]_used_percent: 31.4
+pool[0]_used_level_ok: 31%
+pool[1]_name: tank
+pool[1]_status_bad: DEGRADED
+pool[1]_used_percent: 84.6
+pool[1]_used_level_warn: 85%
+pools_summary: 1/2
+disk[0]_name: sda
+disk[0]_temp_level_ok: 38°
+disk[1]_name: sdb
+disk[1]_temp_level_ok: 39°
+disk[2]_name: sdc
+disk[3]_name: sdd
+disk[3]_temp_level_ok: 37°
+disk[4]_name: sde
+disk[4]_temp_level_warn: 47°
+disk[5]_name: sdf
+disk[5]_temp_level_ok: 40°
+disk[6]_name: nvme0n1
+disk[6]_temp_level_ok: 44°
+disk[7]_name: nvme1n1
+disk[7]_temp_level_warn: 63°
+disks_max_temp: 63
+truenas_alerts: 2
+truenas_alerts_bad: 2
+truenas_alert[0]_bad: Pool tank state is DEGRADED: One or more devices has…
+truenas_alert[1]_warn: Scrub of pool fast is overdue
+apps_summary: 6/7
+homelab_problems: 5
+homelab_problems_bad: 5
+homelab_problem[0]_bad: POOL TANK DEGRADED
+homelab_problem[1]_bad: 1 CRITICAL ALERT
+homelab_problem[2]_bad: PVE-C UNREACHABLE
+homelab_problems_more: +2 MORE
+pve_node[0]_name: pve-a
+pve_node[0]_status_ok: ONLINE
+pve_node[0]_cpu_percent: 23.4
+pve_node[0]_mem_percent: 61.8
+pve_node[0]_guests: 5/6
+pve_node[0]_uptime: 12d 04h
+pve_node[1]_name: pve-b
+pve_node[1]_status_ok: ONLINE
+pve_node[1]_cpu_percent: 6.2
+pve_node[1]_mem_percent: 34.0
+pve_node[1]_guests: 3/3
+pve_node[1]_uptime: 41d 17h
+pve_node[2]_name: pve-c
+pve_node[2]_status_bad: UNREACHABLE
+guest[0]_backup_ok: 9h
+guest[1]_backup_ok: 9h
+guest[2]_backup_ok: 9h
+guest[3]_backup_warn: 3d
+guest[4]_backup_none: NONE
+guest[5]_backup_ok: 9h
+guest[6]_backup_ok: 2h
+guest[7]_backup_ok: 2h
+backups_summary: 6/7
+backups_summary_warn: 6/7
+pool[0]_scrub_ok: SCRUB 42%
+pool[0]_scrub_eta: 18h left
+pool[1]_scrub_bad: 4 ERRORS
+pve_backup_job[0]_node: pve-a
+pve_backup_job[0]_state_ok: OK
+pve_backup_job[0]_age: 9h
+pve_backup_job[1]_node: pve-b
+pve_backup_job[1]_state_ok: OK
+pve_backup_job[1]_age: 2h
+tasks_summary_bad: 4/5
+task[0]_kind: REPL
+task[0]_name: tank -> backup
+task[0]_state_ok: OK
+task[0]_age: 6h
+task[1]_kind: CLOUD
+task[1]_name: b2 photos
+task[1]_state_bad: FAILED
+task[1]_age: 1d
+task[2]_kind: SNAP
+task[2]_name: tank/media
+task[2]_state_ok: OK
+task[2]_age: 1h
+task[3]_kind: SNAP
+task[3]_name: tank/documents
+task[3]_state_ok: OK
+task[3]_age: 1h
+task[4]_kind: SNAP
+task[4]_name: fast/vm
+task[4]_state_ok: RUNNING
+pbs_reachable: 1
+pbs_status_ok: ONLINE
+pbs_version: 4.2.3
+datastore[0]_name: usb-backup
+datastore[0]_status_ok: ONLINE
+datastore[0]_used_percent: 12.2
+datastore[0]_used_level_ok: 12%
+datastore[0]_used: 902 GB
+datastore[0]_total: 7.22 TB
+datastore[0]_full_in: full in 214d
+datastore[0]_usage: 902 GB of 7.22 TB
+datastore[1]_name: offsite
+datastore[1]_status_bad: UNAVAILABLE
+datastore[1]_error: datastore is not mounted
+datastores_summary_bad: 1/2
+pbs_jobs_summary_warn: 3/4
+pbs_job[0]_kind: VERIFY
+pbs_job[0]_name: v-weekly
+pbs_job[0]_state_ok: OK
+pbs_job[0]_age: 2d
+pbs_job[1]_kind: PRUNE
+pbs_job[1]_name: default
+pbs_job[1]_state_ok: OK
+pbs_job[1]_age: 9h
+pbs_job[2]_kind: GC
+pbs_job[2]_name: offsite
+pbs_job[2]_state_warn: NEVER RUN
+pbs_job[3]_kind: GC
+pbs_job[3]_name: usb-backup
+pbs_job[3]_state_ok: OK
+pbs_job[3]_age: 9h

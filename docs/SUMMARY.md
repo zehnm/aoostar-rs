@@ -6,6 +6,7 @@
 
 - [Installation](installation.md)
   - [Linux systemd Service](linux/README.md)
+- [Homelab Panels: Proxmox VE and TrueNAS](homelab.md)
 - [asterctl Tool](asterctl.md)
 - [Shell Commands](shell_commands.md)
 

@@ -304,6 +304,16 @@ impl SysinfoSource {
             "system_uptime",
             format!("{day_string}{up_hours:02}:{up_mins:02}"),
         );
+        // compact format for small panel fields
+        add_sensor(
+            sensors,
+            "system_uptime_short",
+            if up_days > 0 {
+                format!("{up_days}d {up_hours:02}h")
+            } else {
+                format!("{up_hours:02}:{up_mins:02}")
+            },
+        );
 
         if let Some(name) = System::name() {
             add_sensor(sensors, "system_name", name);

@@ -16,6 +16,9 @@ Check out the **[User Guide](https://zehnm.github.io/aoostar-rs)** for a list of
 - Render dynamic sensor panels defined from the AOOSTAR-X software.
     - Update sensor values from simple text files.
     - Rotate through multiple panels in a defined interval.
+    - Stale values are shown as `--` instead of the last known value.
+- [Homelab panels](docs/homelab.md) for Proxmox VE hosts with VMs, containers and a TrueNAS VM.
+- Burn-in protection: pixel shift, periodic inverted frames and display off hours.
 - USB device/serial port selection.
 
 ## Disclaimer

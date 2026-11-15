@@ -1,0 +1,78 @@
+# aster-homelab configuration: Proxmox VE and TrueNAS sensor values for asterctl.
+#
+# Secrets are read from separate files, readable only by the service user. Relative paths are
+# resolved against this file's directory (or the systemd credentials directory, if used).
+
+# Output sensor file, read by asterctl --sensor-path
+out = "/run/aoostar-homelab/homelab.txt"
+# Refresh interval in seconds
+refresh = 10
+
+# Proxmox VE hosts. Standalone hosts each get a [[proxmox]] entry; a cluster only needs one.
+[[proxmox]]
+name = "pve-a"
+url = "https://127.0.0.1:8006"
+# Read-only API token with the PVEAuditor role
+token_id = "aster@pve!lcd"
+token_secret_file = "secrets/pve-a-token"
+# SHA-256 fingerprint of the Proxmox certificate, printed by setup-pve-token.sh
+# tls_fingerprint = "AB:CD:..."
+# Guest ids to hide (templates are always hidden)
+exclude = []
+# Guest ids that must be running: a stopped guest counts as a problem
+expect_running = []
+# A guest whose newest backup is older than this is a warning (backups are checked every 5 minutes)
+backup_max_age_hours = 26
+# Guest ids without backup monitoring
+backup_ignore = []
+
+[[proxmox]]
+name = "pve-b"
+url = "https://pve-b:8006"
+token_id = "aster@pve!lcd"
+token_secret_file = "secrets/pve-b-token"
+# tls_fingerprint = "AB:CD:..."
+
+[[proxmox]]
+name = "pve-c"
+url = "https://pve-c:8006"
+token_id = "aster@pve!lcd"
+token_secret_file = "secrets/pve-c-token"
+# tls_fingerprint = "AB:CD:..."
+
+[truenas]
+# TrueNAS VM address. Always HTTPS: TrueNAS revokes API keys used over plain HTTP!
+host = "192.0.2.10"
+# User owning the API key (TrueNAS 25.04+). Remove to use auth.login_with_api_key.
+username = "aster"
+api_key_file = "secrets/truenas-api-key"
+# aster-homelab --print-fingerprint 192.0.2.10
+# tls_fingerprint = "AB:CD:..."
+# Disks to hide, virtual disks (vd*, QEMU) are hidden automatically
+exclude_disks = []
+# Temperature warning / critical thresholds in °C
+hdd_temp_limits = [50, 55]
+ssd_temp_limits = [60, 70]
+# Pool usage warning / critical thresholds in percent
+pool_usage_limits = [80, 90]
+# A pool not scrubbed for this many days is a warning
+scrub_max_age_days = 40
+# A replication, cloud sync, rsync or snapshot task without a successful run for this many days
+# is a warning
+task_max_age_days = 8
+# Names of tasks to hide
+exclude_tasks = []
+
+# Proxmox Backup Server. Remove this section if you don't use one.
+[pbs]
+url = "https://192.0.2.20:8007"
+# Read-only API token with the Audit role, created with setup-pbs-token.sh
+token_id = "aster@pbs!lcd"
+token_secret_file = "secrets/pbs-token"
+# SHA-256 fingerprint of the PBS certificate, printed by setup-pbs-token.sh
+# tls_fingerprint = "AB:CD:..."
+# Datastore usage warning / critical thresholds in percent
+usage_limits = [80, 90]
+# A scheduled verify, sync, prune or garbage collection job without a run for this many days
+# is a warning
+job_max_age_days = 8

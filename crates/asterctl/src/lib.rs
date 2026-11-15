@@ -4,6 +4,7 @@
 #![forbid(non_ascii_idents)]
 #![deny(unsafe_code)]
 
+pub mod burnin;
 pub mod cfg;
 pub mod font;
 mod format_value;

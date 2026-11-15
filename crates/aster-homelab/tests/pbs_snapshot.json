@@ -1,0 +1,56 @@
+{
+ "datastore-usage": [
+  {
+   "store": "usb",
+   "total": 8000,
+   "used": 1000,
+   "avail": 7000,
+   "estimated-full-date": 1780480000
+  },
+  {
+   "store": "offsite",
+   "error": "datastore is not mounted",
+   "mount-status": "notmounted"
+  }
+ ],
+ "verify": [
+  {
+   "id": "v-weekly",
+   "store": "usb",
+   "schedule": "sat 03:00",
+   "last-run-state": "OK",
+   "last-run-endtime": 1763023600
+  }
+ ],
+ "sync": [
+  {
+   "id": "s-offsite",
+   "store": "offsite",
+   "schedule": "daily",
+   "last-run-state": "connection refused",
+   "last-run-endtime": 1763113600,
+   "comment": "offsite copy"
+  }
+ ],
+ "prune": [
+  {
+   "id": "p-usb",
+   "store": "usb",
+   "schedule": "daily",
+   "last-run-state": "WARNINGS: 1",
+   "last-run-endtime": 1763196400
+  }
+ ],
+ "gc": [
+  {
+   "store": "usb",
+   "schedule": "daily",
+   "last-run-state": "OK",
+   "last-run-endtime": 1762336000
+  },
+  {
+   "store": "offsite",
+   "schedule": "daily"
+  }
+ ]
+}

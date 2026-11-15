@@ -1,0 +1,42 @@
+[Unit]
+Description=AOOSTAR LCD: Proxmox VE and TrueNAS sensor values (aster-homelab)
+Wants=network-online.target
+After=network-online.target pveproxy.service
+
+[Service]
+Type=exec
+User=aoostar
+Group=aoostar
+RuntimeDirectory=aoostar-homelab
+RuntimeDirectoryPreserve=yes
+WorkingDirectory=/opt/aoostar
+ExecStart=/opt/aoostar/bin/aster-homelab --config /opt/aoostar/homelab.toml --out /run/aoostar-homelab/homelab.txt
+Restart=always
+RestartSec=15
+UMask=0022
+
+CapabilityBoundingSet=
+NoNewPrivileges=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

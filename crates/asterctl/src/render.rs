@@ -7,12 +7,13 @@ use crate::cfg::{Panel, Sensor, SensorDirection, SensorMode, TextAlign};
 use crate::font::FontHandler;
 use crate::format_value;
 use crate::img::{ImageCache, Size, rotate_image};
+use crate::sensors::STALE_VALUE;
 use crate::sensors::get_date_time_value;
 use ab_glyph::Font;
 use chrono::{DateTime, Local};
 use image::{ImageBuffer, Rgba, RgbaImage};
 use imageproc::drawing::{draw_text_mut, text_size};
-use log::{debug, error};
+use log::{debug, error, warn};
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use std::fs;
@@ -172,10 +173,26 @@ impl PanelRenderer {
                 .or_else(|| sensor.unit.clone())
                 .unwrap_or_default();
 
-            if let Some(value) = value {
-                self.render_sensor(&mut background, sensor, &value, &unit)?;
-            } else if let Some(value) = get_date_time_value(&sensor.label, &now) {
-                self.render_sensor(&mut background, sensor, &value, &unit)?;
+            let Some(value) = value
+                .or_else(|| get_date_time_value(&sensor.label, &now))
+                .or_else(|| get_static_text_value(sensor))
+            else {
+                continue;
+            };
+
+            // Graphical sensors require a numeric value. Skip them for text values, for example
+            // the placeholder of a stale sensor.
+            if sensor.mode != SensorMode::Text && value.parse::<f32>().is_err() {
+                debug!(
+                    "Skipping non-numeric value for sensor {}: {value}",
+                    sensor.label
+                );
+                continue;
+            }
+
+            // A single broken sensor must not prevent rendering the rest of the panel
+            if let Err(e) = self.render_sensor(&mut background, sensor, &value, &unit) {
+                warn!("Error rendering sensor {}: {e:?}", sensor.label);
             }
         }
 
@@ -224,13 +241,18 @@ impl PanelRenderer {
         let adjustment_hack = 0.75;
         let scale = font.pt_to_px_scale(font_size * adjustment_hack).unwrap();
 
+        // no unit for stale values: `--°C` looks like a reading
+        let unit = if value == STALE_VALUE { "" } else { unit };
         let text = format_value(
             value,
             sensor.integer_digits.into(),
             sensor.decimal_digits.unwrap_or_default() as usize,
             unit,
         );
-        let size = text_size(scale, &font, &text);
+        let mut size = text_size(scale, &font, &text);
+        // Vertical centering is based on the text height. Use at least the height of a digit,
+        // otherwise low glyphs like `--` or `...` are positioned too far down.
+        size.1 = size.1.max(text_size(scale, &font, "0").1);
         let width = sensor.width.unwrap_or_default() as i32;
         let height = sensor.height.unwrap_or_default() as i32;
         let x = match sensor.text_align.unwrap_or_default() {
@@ -742,5 +764,17 @@ impl PanelRenderer {
         } else {
             None
         }
+    }
+}
+
+/// Static text element: sensor labels starting with `TEXT_` render their `value` field.
+///
+/// `asterctl` extension for captions and headings, which otherwise have to be part of the
+/// background image. A sensor value with the same label takes precedence.
+fn get_static_text_value(sensor: &Sensor) -> Option<String> {
+    if sensor.label.starts_with("TEXT_") {
+        sensor.value.clone()
+    } else {
+        None
     }
 }

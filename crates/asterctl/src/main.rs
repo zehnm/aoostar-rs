@@ -4,9 +4,12 @@
 #![forbid(non_ascii_idents)]
 #![deny(unsafe_code)]
 
+use asterctl::burnin::{BurnInGuard, BurnInOptions, OffHours, invert};
 use asterctl::cfg::{MonitorConfig, Panel, load_custom_panel};
 use asterctl::render::PanelRenderer;
-use asterctl::sensors::{read_filter_file, read_key_value_file, start_file_slurper};
+use asterctl::sensors::{
+    STALE_VALUE, SensorStore, read_filter_file, read_key_value_file, start_file_slurper,
+};
 use asterctl::{cfg, img};
 use asterctl_lcd::{AooScreen, AooScreenBuilder, DISPLAY_SIZE};
 
@@ -21,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 /// AOOSTAR WTR MAX and GEM12+ PRO screen control.
 #[derive(Parser, Debug)]
@@ -70,8 +73,17 @@ struct Args {
     font_dir: String,
 
     /// Single sensor value input file or directory for multiple sensor input files.
-    #[arg(long, default_value_t = String::from("cfg/sensors"))]
-    sensor_path: String,
+    ///
+    /// Can be specified multiple times. Paths that don't exist yet are picked up once they appear.
+    /// Default: `cfg/sensors`
+    #[arg(long)]
+    sensor_path: Vec<PathBuf>,
+
+    /// Show sensor values as `--` if their sensor file hasn't been updated for n seconds.
+    ///
+    /// 0 disables stale value detection.
+    #[arg(long, default_value_t = 30)]
+    stale_after: u32,
 
     /// Sensor identifier mapping file. Ignored if the file does not exist.
     ///
@@ -79,6 +91,26 @@ struct Args {
     /// specified.
     #[arg(long, default_value_t = String::from("sensor-mapping.cfg"))]
     sensor_mapping: String,
+
+    /// Burn-in protection: move the panel by one pixel every n minutes. 0 disables pixel shifting.
+    #[arg(long, default_value_t = 0, value_name = "MINUTES")]
+    pixel_shift: u32,
+
+    /// Maximum pixel shift offset in each direction.
+    #[arg(long, default_value_t = 2, value_name = "PIXELS")]
+    pixel_shift_max: u32,
+
+    /// Burn-in protection: show the inverted panel every n minutes. 0 disables wiping.
+    #[arg(long, default_value_t = 0, value_name = "MINUTES")]
+    wipe_interval: u32,
+
+    /// Duration of the inverted panel.
+    #[arg(long, default_value_t = 3, value_name = "SECONDS")]
+    wipe_duration: u32,
+
+    /// Switch off the display during this daily time window, for example `23:00-07:00`.
+    #[arg(long, value_name = "HH:MM-HH:MM")]
+    off_hours: Option<OffHours>,
 
     /// Switch off display n seconds after loading image or running demo.
     #[arg(short, long)]
@@ -139,7 +171,21 @@ fn main() -> anyhow::Result<()> {
 
         let cfg_dir = PathBuf::from(args.config_dir);
         let font_dir = PathBuf::from(args.font_dir);
-        let sensor_path = PathBuf::from(args.sensor_path);
+        let sensor_paths = if args.sensor_path.is_empty() {
+            vec![PathBuf::from("cfg/sensors")]
+        } else {
+            args.sensor_path
+        };
+        let stale_after =
+            (args.stale_after > 0).then(|| Duration::from_secs(args.stale_after.into()));
+        let minutes = |m: u32| (m > 0).then(|| Duration::from_secs(u64::from(m) * 60));
+        let burn_in = BurnInOptions {
+            pixel_shift_interval: minutes(args.pixel_shift),
+            pixel_shift_max: args.pixel_shift_max,
+            wipe_interval: minutes(args.wipe_interval),
+            wipe_duration: Duration::from_secs(args.wipe_duration.into()),
+            off_hours: args.off_hours,
+        };
         let mapping_cfg = PathBuf::from(args.sensor_mapping);
         let cfg = load_configuration(&config, &cfg_dir, args.panels, &mapping_cfg)?;
         run_sensor_panel(
@@ -147,7 +193,11 @@ fn main() -> anyhow::Result<()> {
             cfg,
             cfg_dir,
             font_dir,
-            sensor_path,
+            PanelOptions {
+                sensor_paths,
+                stale_after,
+                burn_in,
+            },
             img_save_path,
         )?;
         return Ok(());
@@ -232,14 +282,26 @@ fn load_sensor_filter(mapping_cfg: &Path) -> anyhow::Result<Option<Vec<Regex>>> 
     Ok(None)
 }
 
+/// Sensor panel runtime options.
+struct PanelOptions {
+    sensor_paths: Vec<PathBuf>,
+    stale_after: Option<Duration>,
+    burn_in: BurnInOptions,
+}
+
 fn run_sensor_panel<B: Into<PathBuf>>(
     screen: &mut AooScreen,
     mut cfg: MonitorConfig,
     config_dir: B,
     font_dir: B,
-    sensor_path: B,
+    options: PanelOptions,
     img_save_path: Option<B>,
 ) -> anyhow::Result<()> {
+    let PanelOptions {
+        sensor_paths,
+        stale_after,
+        burn_in,
+    } = options;
     let font_dir = font_dir.into();
     let config_dir = config_dir.into();
     let img_save_path = img_save_path.map(|p| p.into());
@@ -252,11 +314,11 @@ fn run_sensor_panel<B: Into<PathBuf>>(
         // renderer.set_save_progress_layer(true);
     }
 
-    let sensor_values: Arc<RwLock<HashMap<String, String>>> = Arc::new(RwLock::new(HashMap::new()));
+    let sensor_store = Arc::new(RwLock::new(SensorStore::new()));
 
     start_file_slurper(
-        sensor_path,
-        sensor_values.clone(),
+        sensor_paths,
+        sensor_store.clone(),
         cfg.sensor_filter.clone(),
     )?;
 
@@ -270,11 +332,36 @@ fn run_sensor_panel<B: Into<PathBuf>>(
         .map(|v| Duration::from_millis((v * 1000.0) as u64))
         .unwrap_or(Duration::from_secs(5));
 
+    let mut guard = BurnInGuard::new(burn_in);
+    let mut display_off = false;
+
+    let panel_count = cfg.active_panel_count();
+    if panel_count == 0 {
+        return Err(anyhow!("No active panel"));
+    }
+
     // panel switching loop
     loop {
-        let panel = cfg
-            .get_next_active_panel()
-            .ok_or(anyhow!("No active panel"))?;
+        // skip panels whose required sensor has no value. Show the next one if none qualifies.
+        let values = snapshot(&sensor_store, stale_after);
+        let mut skipped = 0;
+        let panel = loop {
+            let panel = cfg
+                .get_next_active_panel()
+                .ok_or(anyhow!("No active panel"))?;
+            let available = panel
+                .requires
+                .as_ref()
+                .is_none_or(|label| values.get(label).is_some_and(|v| v != STALE_VALUE));
+            skipped += 1;
+            if available || skipped >= panel_count {
+                break panel;
+            }
+            debug!(
+                "Skipping panel {}: no value for required sensor",
+                panel.friendly_name()
+            );
+        };
 
         info!("Switching panel: {}", panel.friendly_name());
         let panel_switch_time = Instant::now();
@@ -288,10 +375,24 @@ fn run_sensor_panel<B: Into<PathBuf>>(
                 renderer.set_img_suffix(format!("-{refresh_count:02}"));
             }
 
-            // Keeping the read lock during panel rendering should be ok, otherwise we could always clone the HashMap
-            let values = sensor_values.read().expect("RwLock is poisoned");
-            update_panel(screen, &mut renderer, panel, &values)?;
-            drop(values);
+            if guard.is_off_hours(chrono::Local::now().time()) {
+                if !display_off {
+                    info!("Off hours: switching display off");
+                    screen.off()?;
+                    display_off = true;
+                }
+                sleep(Duration::from_secs(10));
+                continue;
+            } else if display_off {
+                info!("Off hours ended: switching display on");
+                screen.on()?;
+                // the display shows its last image: force sending a full frame
+                screen.clear_cache();
+                display_off = false;
+            }
+
+            let values = snapshot(&sensor_store, stale_after);
+            update_panel(screen, &mut renderer, &mut guard, panel, &values)?;
 
             let elapsed = upd_start_time.elapsed();
             if refresh > elapsed {
@@ -307,18 +408,38 @@ fn run_sensor_panel<B: Into<PathBuf>>(
     }
 }
 
+fn snapshot(store: &RwLock<SensorStore>, stale_after: Option<Duration>) -> HashMap<String, String> {
+    store
+        .read()
+        .expect("RwLock is poisoned")
+        .snapshot(stale_after, SystemTime::now())
+}
+
 fn update_panel(
     screen: &mut AooScreen,
     renderer: &mut PanelRenderer,
+    guard: &mut BurnInGuard,
     panel: &Panel,
     values: &HashMap<String, String>,
 ) -> anyhow::Result<()> {
     debug!("Displaying panel '{}'...", panel.friendly_name());
 
-    match renderer.render(panel, values) {
-        Ok(image) => screen.send_image(&image)?,
-        Err(e) => error!("Error rendering panel '{}': {e:?}", panel.friendly_name()),
+    let image = match renderer.render(panel, values) {
+        Ok(image) => image,
+        Err(e) => {
+            error!("Error rendering panel '{}': {e:?}", panel.friendly_name());
+            return Ok(());
+        }
+    };
+
+    let now = Instant::now();
+    let image = guard.apply(image, now);
+    if guard.wipe_due(now) {
+        debug!("Burn-in protection: showing inverted frame");
+        screen.send_image(&invert(&image))?;
+        sleep(guard.wipe_duration());
     }
+    screen.send_image(&image)?;
 
     Ok(())
 }

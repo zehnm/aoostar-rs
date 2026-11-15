@@ -1,0 +1,25 @@
+[package]
+name = "aster-homelab"
+version = "0.1.0"
+description = "Proxmox VE and TrueNAS sensor provider for asterctl"
+
+rust-version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1.0.98"
+chrono = "0.4"
+clap = { version = "4.5.42", features = ["derive"] }
+env_logger = "0.11.8"
+log = "0.4.27"
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.142"
+toml = "0.9"
+tungstenite = { version = "0.27", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+ureq = { version = "2.12", default-features = false, features = ["tls", "json"] }
+webpki-roots = "1"

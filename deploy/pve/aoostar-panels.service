@@ -1,0 +1,53 @@
+[Unit]
+Description=AOOSTAR LCD: rotating sensor panels (asterctl)
+Wants=aoostar-sysinfo.service aoostar-homelab.service
+After=aoostar-sysinfo.service aoostar-homelab.service
+Conflicts=aoostar-lcd.service
+
+[Service]
+Type=exec
+User=aoostar
+Group=aoostar
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/aoostar
+# Burn-in protection and other options: see /opt/aoostar/panels.env
+Environment=ASTERCTL_OPTS=
+EnvironmentFile=-/opt/aoostar/panels.env
+ExecStart=/opt/aoostar/bin/asterctl \
+    --config homelab.json \
+    --config-dir /opt/aoostar/panels \
+    --font-dir /opt/aoostar/fonts \
+    --sensor-mapping sensor-mapping.cfg \
+    --sensor-path /run/aoostar-sysinfo \
+    --sensor-path /run/aoostar-homelab \
+    $ASTERCTL_OPTS
+# switch the LCD off when stopped
+ExecStopPost=/opt/aoostar/bin/asterctl --off
+Restart=always
+RestartSec=10
+
+CapabilityBoundingSet=
+NoNewPrivileges=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateNetwork=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallErrorNumber=EPERM
+DeviceAllow=char-ttyACM rw
+
+[Install]
+WantedBy=multi-user.target

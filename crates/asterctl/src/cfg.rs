@@ -117,7 +117,7 @@ pub struct MonitorConfig {
     /// Custom panels / DIY "Do It Yourself",
     #[serde(rename = "diy")]
     pub panels: Vec<Panel>,
-    /// Internal index of the currently active panel. 1-based!
+    /// Internal position of the currently active panel in the list of valid `active_panels`.
     #[serde(skip)]
     active_panel_idx: Option<usize>,
     /// Internal sensor label mapping
@@ -130,28 +130,33 @@ pub struct MonitorConfig {
 
 impl MonitorConfig {
     pub fn get_next_active_panel(&mut self) -> Option<&Panel> {
-        let mut active_panel_idx = self.active_panel_idx.unwrap_or(0) + 1;
-        if active_panel_idx > self.panels.len() {
-            active_panel_idx = 1;
-        }
-
-        for (index, active) in self
+        let panel_count = self.panels.len() as u32;
+        let active: Vec<usize> = self
             .active_panels
             .iter()
-            .filter(|&active| *active > 0)
-            .enumerate()
-        {
-            if *active > self.panels.len() as u32 {
-                warn!("Ignoring invalid active panel {active}");
-                continue;
-            }
-            if index + 1 == active_panel_idx {
-                self.active_panel_idx = Some(active_panel_idx);
-                return Some(&self.panels[*active as usize - 1]);
-            }
+            .filter(|&&active| active > 0 && active <= panel_count)
+            .map(|&active| active as usize - 1)
+            .collect();
+        if active.is_empty() {
+            return None;
         }
 
-        None
+        // position in the list of valid active panels, not a panel index
+        let next = self
+            .active_panel_idx
+            .map(|idx| (idx + 1) % active.len())
+            .unwrap_or_default();
+        self.active_panel_idx = Some(next);
+        Some(&self.panels[active[next]])
+    }
+
+    /// Number of valid active panels.
+    pub fn active_panel_count(&self) -> usize {
+        let panel_count = self.panels.len() as u32;
+        self.active_panels
+            .iter()
+            .filter(|&&active| active > 0 && active <= panel_count)
+            .count()
     }
 
     /// Adds a custom panel to the application and maps sensor labels if applicable.
@@ -288,6 +293,13 @@ pub struct Panel {
      */
     /// Background image filename
     pub img: Option<String>,
+    /// Only show the panel if this sensor label has a value. `asterctl` extension, not part of
+    /// AOOSTAR-X.
+    ///
+    /// Useful for panels with optional content, for example a second page of guests, or a panel
+    /// for a data source that is not configured.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requires: Option<String>,
     /// Sensors
     pub sensor: Vec<Sensor>,
 }
@@ -343,7 +355,7 @@ pub struct Sensor {
     /// Label identifier, also used as data source identifier.
     pub label: String,
     /// Sensor value. Ignored: value is used from a sensor source
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub value: Option<String>, // "" or numbers, so Option<String>
 
     /// Image for progress, fan and pointer indicators
@@ -352,7 +364,7 @@ pub struct Sensor {
     pub max_value: Option<f32>,
 
     /// Optional unit text to print after the value
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub unit: Option<String>,
     /// Rounded x-position. Custom panel coordinates are stored as float!
     #[serde(deserialize_with = "f32_as_rounded_i32")]
@@ -379,14 +391,14 @@ pub struct Sensor {
 
     /// Number of integer places for the sensor value.
     // -1 ≈ unset ⇒ Option<i32>
-    #[serde(deserialize_with = "option_none_if_minus_one")]
+    #[serde(default, deserialize_with = "option_none_if_minus_one")]
     pub integer_digits: Option<i32>,
     /// Number of decimal places for the sensor value.
     // -1 ≈ unset ⇒ Option<i32>
-    #[serde(deserialize_with = "option_none_if_minus_one")]
+    #[serde(default, deserialize_with = "option_none_if_minus_one")]
     pub decimal_digits: Option<i32>,
     /// Image for progress, fan and pointer indicators
-    #[serde(deserialize_with = "empty_string_as_none")]
+    #[serde(default, deserialize_with = "empty_string_as_none")]
     pub pic: Option<String>,
 
     /// Used for fan & pointer sensors
@@ -620,4 +632,75 @@ where
 {
     let rounded = f32::deserialize(deserializer).map(f32::round)?;
     Ok(rounded as i32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn config(panels: usize, active: &[u32]) -> MonitorConfig {
+        let panels: Vec<String> = (1..=panels)
+            .map(|i| format!(r#"{{"name": "p{i}", "sensor": []}}"#))
+            .collect();
+        let json = format!(
+            r#"{{"setup": {{"refresh": 1}}, "mianban": {active:?}, "diy": [{}]}}"#,
+            panels.join(",")
+        );
+        serde_json::from_str(&json).expect("valid test config")
+    }
+
+    fn next_names(cfg: &mut MonitorConfig, count: usize) -> Vec<String> {
+        (0..count)
+            .map(|_| {
+                cfg.get_next_active_panel()
+                    .expect("active panel")
+                    .friendly_name()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn rotates_through_all_active_panels() {
+        let mut cfg = config(3, &[1, 2, 3]);
+        assert_eq!(next_names(&mut cfg, 4), ["p1", "p2", "p3", "p1"]);
+    }
+
+    #[test]
+    fn rotates_with_fewer_active_than_defined_panels() {
+        // regression: used to return None on the 3rd call and terminate the panel loop
+        let mut cfg = config(3, &[1, 3]);
+        assert_eq!(next_names(&mut cfg, 5), ["p1", "p3", "p1", "p3", "p1"]);
+    }
+
+    #[test]
+    fn ignores_invalid_active_panels() {
+        let mut cfg = config(2, &[0, 2, 7]);
+        assert_eq!(cfg.active_panel_count(), 1);
+        assert_eq!(next_names(&mut cfg, 2), ["p2", "p2"]);
+    }
+
+    #[test]
+    fn no_active_panel() {
+        let mut cfg = config(2, &[]);
+        assert!(cfg.get_next_active_panel().is_none());
+    }
+
+    #[test]
+    fn minimal_text_sensor() {
+        let sensor: Sensor =
+            serde_json::from_str(r#"{"mode": 1, "label": "cpu", "x": 10, "y": 20.6}"#).unwrap();
+        assert_eq!(sensor.y, 21);
+        assert!(sensor.pic.is_none());
+        assert!(sensor.unit.is_none());
+        assert!(sensor.integer_digits.is_none());
+    }
+
+    #[test]
+    fn panel_requires_is_optional() {
+        let cfg = config(1, &[1]);
+        assert!(cfg.panels[0].requires.is_none());
+        let panel: Panel =
+            serde_json::from_str(r#"{"requires": "vm[14]_name", "sensor": []}"#).unwrap();
+        assert_eq!(panel.requires.as_deref(), Some("vm[14]_name"));
+    }
 }
